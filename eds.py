@@ -9,6 +9,63 @@ SCHEDULE_T=2 #Clock des Schedulers
 alpha=-np.log10(0.01)/100
 
 
+
+def ue_to_df(users):
+    df=pd.DataFrame()
+    mr=[]
+    mr2=[]
+    queue=[]
+    queue2=[]
+    tbs=[]
+    tbs2=[]
+    comp=[]
+    sinr=[]
+    sinr2=[]
+    gain=[]
+    qos=[]
+    mr_list=[]
+    mr2_list=[]
+    metric_sav=[]
+    metric2_sav=[]
+    bit=[]
+    bit2=[]
+    
+    for i in users:
+        mr.append(i.mR)
+        mr2.append(i.mR2)
+        queue.append(i.queue.level)
+        queue2.append(i.queue2.level)
+        tbs.append(i.tbs)
+        tbs2.append(i.tbs2)
+        comp.append(i.comp)
+        sinr.append(i.sinr)
+        sinr2.append(i.sinr2)
+        gain.append(i.gain)
+        qos.append(i.qos)
+        mr_list.append(i.mr_mon)
+        mr2_list.append(i.mr2_mon)
+        bit.append(i.bits)
+        bit2.append(i.bits2)
+
+    
+
+    df['mr']=mr
+    df['mr2']=mr2
+    df['queue']=queue
+    df['queue2']=queue2
+    df['tbs']=tbs
+    df['tbs2']=tbs2
+    df['comp']=comp
+    df['sinr1']=sinr
+    df['sinr2']=sinr2
+    df['sinr-gain']=gain
+    df['qos']=qos
+    df['mr-Mon']=mr_list
+    df['mr2-Mon']=mr_list
+    df['bit']=bit
+    df['bits']=bit2
+    return df
+
 def df_to_ue_lists(df,cluster,thr,env):
 
     cluster=[19,20]
@@ -24,8 +81,8 @@ def df_to_ue_lists(df,cluster,thr,env):
     return ue_dict
 
 #function to monitor the level of the different queues
-def monitor(queue,monitor,env): 
-    monitor.update({env.now: queue.level})
+def monitor(value,monitor,env): 
+    monitor.update({env.now: value})
     return monitor
 
 def calculate_prb_number(users,max_prb):
@@ -130,17 +187,18 @@ def metric_list_C(users,sched_exp,counter,usage):
 
 def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
     
-    counter=1 #counts the number of scheduling procedures
     alpha=-np.log10(0.01)/100
     while True: #größte Warteschlange wird auch bedient
-        
+        counter=env.now+1 #counts the number of scheduling procedures
+        print('comp scheduler:', env.now)
         yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
         metric=np.array([]) 
         
         for i in np.arange(len(users)):
-            users[i].mon= monitor(users[i].queue,users[i].mon,env)
+            users[i].mon2= monitor(users[i].queue.level,users[i].mon2,env)
+            users[i].mr2_mon=monitor(users[i].mR2,users[i].mr2_mon,env)
         
-        sched_user_list=metric_list_C(users,[1,1],counter,'comp')
+        sched_user_list=metric_list_C(users,[1,1],env.now,'comp')
         
         remaining_prb_list={}
         for i in cluster:
@@ -184,38 +242,39 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
                 remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(sched_size/tbs2)
                 
             elif(queue_size==0):
-                print('empty queue -comp')
+                #print('empty queue -comp')
                 break
             else:
                 print('something went wrong')
-
-            users[sched_user].mR=users[sched_user].mR+(1/counter)*sched_size
-            users[sched_user].queue.get(sched_size)
-            #print('Queue nachher:',users[sched_user].queue.level)
+            users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
+            users[sched_user].queue2.get(sched_size)
             k=k+1
             free_res=0
             for i in cluster:
                 if(remaining_prb_list[i]!=0):
                     free_res=1
                     
-        counter=counter+2
         
         
 
 
 #scheduler takes packets from the queues according to the capacity of each user
 def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, sched_metric):
-    
-    counter=1 #counts the number of scheduling procedures
+
     bits1=0
     bits2=0
     while True: #größte Warteschlange wird auch bedient
-        
+        counter=env.now+1 
+        print('no- comp scheduler:', env.now)
         yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
         metric=np.array([]) 
         
-        for i in np.arange(len(users)):
-            users[i].mon= monitor(users[i].queue,users[i].mon,env)
+        for i in users:
+            i.mon= monitor(i.queue.level,i.mon,env)
+            i.mr_mon=monitor(i.mR,i.mr_mon,env)
+        for i in users2:
+            i.mr2_mon=monitor(i.mR2,i.mr2_mon,env)
+        
         
         sched_user_list=metric_list_nC(users,[1,1],counter)
 
@@ -234,25 +293,23 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
                 remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
                 
             elif(queue_size==0):
-                print('empty queue - no comp')
+                #print('empty queue - no comp')
                 break
             else:
                 print('something went wrong')
-          
+            #print('normal scheduler:',env.now)
+            #print('normal scheduler -> id:',sched_user)
+            print('Rate',users[sched_user].mR)
             users[sched_user].mR=users[sched_user].mR+(1/counter)*sched_size
             users[sched_user].queue.get(sched_size)
             users[sched_user].bits+=sched_size
             k=k+1
-            
-            if(sched_user_list[k]==0 or sched_user_list[k]==1 or sched_user_list[k] ==2):
-                print('ue-number sched1:', sched_user_list[k])
-                print(users[sched_user].mR)
-                print(counter)
+
+                
         #CoMP-Scheduling Process- Users with normal scheduling
         ############################
         
         sched_user_list = metric_list_C(users2,[1,1],counter,'nocomp') #calculates the ordered list with ues
-        
         
         remaining_prbs=prb_number2
         k=0
@@ -270,24 +327,21 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
                 remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
                 
             elif(queue_size==0):
-                print('empty queue - comp-scheduling: no comp user')
+                #print('empty queue - comp-scheduling: no comp user')
                 break
             else:
                 print('something went wrong')
-            
+                
+            #print('normal scheduler - comp',env.now)
+            #print('normal scheduler - comp -> id:',sched_user)
+            #print('Rate before',users[sched_user].mR)
             users2[sched_user].mR2=users2[sched_user].mR2+(1/counter)*sched_size
+     
             users2[sched_user].queue2.get(sched_size)
             users2[sched_user].bits2+=sched_size
-            
-            if(sched_user_list[k]==0 or sched_user_list[k]==1 or sched_user_list[k] ==2):
-                print('ue-number sched1:', sched_user_list[k])
-                print(users2[sched_user].mR2)
-                print(counter)
-            
+
             k=k+1
         ###########################
-
-        counter=counter+2
         
 
 class ue:
@@ -305,12 +359,15 @@ class ue:
         self.queue=simpy.Container(env)
         self.queue2=simpy.Container(env)
         self.mon={}
+        self.mon2={}
         self.metric=self.sinr+self.queue.level
         self.metric2=self.sinr+self.queue.level
         self.gain=self.sinr2-self.sinr
         self.id=id
         self.bits=0
         self.bits2=0
+        self.mr_mon={}
+        self.mr2_mon={}
         if(self.gain >thr):
             self.comp=np.array(1)
         else:
@@ -327,7 +384,7 @@ class ue:
             elif(on_off==1 and counter<3000):
                 self.queue.put(160) #20 bytes
                 self.queue2.put(160) #20 bytes
-                mon= monitor(self.queue,self.mon,env)
+                mon= monitor(self.queue.level,self.mon,env)
                 #yield env.timeout(poisson.rvs(6, 1))
                 #print('On Phase')
                 #print(self.queue.level)
