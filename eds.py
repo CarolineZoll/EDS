@@ -113,7 +113,6 @@ def get_dataframe(users):
     sinr2=np.array([])
     tbs=np.array([])
     queue=np.array([])
-    
     for i in np.arange(np.size(users)):
         sinr=np.append(sinr,users[i].sinr)
         sinr2=np.append(sinr,users[i].sinr2)
@@ -150,14 +149,21 @@ def metric_list_nC(users,sched_exp,counter):
     for i in users: 
         if(i.qos==1 or i.qos==2):
             metric=np.append(metric, (alpha*i.queue.level*((i.cp)**e1/(i.mR)**e2)))  #list the metric of all UEs in the process 
-            i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer    
+            i.mR=(1-1/counter)*i.mR 
+            i.mR=(1-1/(counter+1))*i.mR #Ratenanpassung für alle Nutzer    
         elif(i.qos==0):
             if(i.queue.level>0):
                 metric=np.append(metric,((i.cp)**e1/(i.mR**e2)))
                 i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
-            elif(i.queue2.level==0):
+                i.mR=(1-1/(counter+1))*i.mR
+            elif(i.queue.level==0):
                 metric=np.append(metric,-1)
                 i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
+                i.mR=(1-1/(counter+1))*i.mR
+            else:
+                print('mistake')
+        else:
+            print('mistake')
     sched_user_list = (-metric).argsort() #sort UEs by metric that will be used for scheduling
     return sched_user_list
 
@@ -173,14 +179,21 @@ def metric_list_C(users,sched_exp,counter,usage):
             
         if(i.qos==1 or i.qos==2):
             metric=np.append(metric, (alpha*i.queue2.level*(cp**e1/(i.mR2)**e2)))  #list the metric of all UEs in the process 
-            i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer    
+            i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer   
+            i.mR2=(1-1/(counter+1))*i.mR2
         elif(i.qos==0):
             if(i.queue2.level>0):
                 metric=np.append(metric,((cp)**e1/(i.mR2)**e2))
                 i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
+                i.mR2=(1-1/(counter+1))*i.mR2
             elif(i.queue2.level==0):
                 metric=np.append(metric,-1)
                 i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
+                i.mR2=(1-1/(counter+1))*i.mR2
+            else:
+                print('mistake')
+        else:
+            print('mistake')
     sched_user_list = (-metric).argsort() #sort UEs by metric that will be used for scheduling
     return sched_user_list
 
@@ -190,7 +203,6 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
     alpha=-np.log10(0.01)/100
     while True: #größte Warteschlange wird auch bedient
         counter=env.now+1 #counts the number of scheduling procedures
-        print('comp scheduler:', env.now)
         yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
         metric=np.array([]) 
         
@@ -219,6 +231,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
             #print('Resourcen:',remaining_prb_list[cell1])
             #print('Resourcen:',remaining_prb_list[cell2])
             #serving cell has no resources left -> no scheduling 
+            sched_size=0
             if(remaining_prbs_c2==0):
                 #print('keine Res mehr frei')
                 continue
@@ -265,7 +278,6 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
     bits2=0
     while True: #größte Warteschlange wird auch bedient
         counter=env.now+1 
-        print('no- comp scheduler:', env.now)
         yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
         metric=np.array([]) 
         
@@ -284,22 +296,20 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
             sched_user=sched_user_list[k]
             queue_size=users[sched_user].queue.level
             tbs=users[sched_user].tbs
-
+            sched_size=0
             if((queue_size/tbs)<=remaining_prbs and queue_size>0):
                 sched_size=queue_size
                 remaining_prbs=remaining_prbs-np.ceil(queue_size/tbs)
             elif((queue_size/tbs)>remaining_prbs):
                 sched_size=remaining_prbs*tbs
                 remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
-                
             elif(queue_size==0):
                 #print('empty queue - no comp')
+                sched_size=0
                 break
             else:
                 print('something went wrong')
-            #print('normal scheduler:',env.now)
-            #print('normal scheduler -> id:',sched_user)
-            print('Rate',users[sched_user].mR)
+     
             users[sched_user].mR=users[sched_user].mR+(1/counter)*sched_size
             users[sched_user].queue.get(sched_size)
             users[sched_user].bits+=sched_size
@@ -318,7 +328,7 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
             sched_user=sched_user_list[k]
             queue_size=users2[sched_user].queue2.level
             tbs=users2[sched_user].tbs
-
+            sched_size=0
             if((queue_size/tbs)<=remaining_prbs and queue_size>0):
                 sched_size=queue_size
                 remaining_prbs=remaining_prbs-np.ceil(queue_size/tbs)
