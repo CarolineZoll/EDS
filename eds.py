@@ -4,10 +4,10 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from scipy.stats import poisson
+from scipy.stats import truncexpon
 
 SCHEDULE_T=2 #Clock des Schedulers 
 alpha=-np.log10(0.01)/100
-
 
 def lognormal(mean):
     while True:
@@ -15,7 +15,6 @@ def lognormal(mean):
         if file <= 5000000*8:
             break
     return file
-
 
 def ue_to_df(users):
     df=pd.DataFrame()
@@ -92,6 +91,17 @@ def monitor(value,monitor,env):
     monitor.update({env.now: value})
     return monitor
 
+#def calculate_prb_number(users,max_prb):
+ #   count=0
+  #  count2=0
+   # for i in users:
+    #    if(i.comp ==1):
+     #       count+=1
+      #  else:
+       #     count2+=1
+    #prb_number=round((count/(count2+count))*max_prb)
+    #return prb_number   
+    
 def calculate_prb_number(users,max_prb):
     count=0
     count2=0
@@ -208,7 +218,7 @@ def metric_list_C(users,sched_exp,counter,usage):
 def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
     
     alpha=-np.log10(0.01)/100
-    while True: #größte Warteschlange wird auch bedient
+    while True: 
         counter=env.now+1 #counts the number of scheduling procedures
         yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
         metric=np.array([]) 
@@ -240,7 +250,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
             #serving cell has no resources left -> no scheduling 
             sched_size=0
             if(remaining_prbs_c2==0):
-                #print('keine Res mehr frei')
+                print('keine Res mehr frei')
                 continue
             #cell to coordinate with has no resources left -> without comp
             elif(remaining_prbs_c2==0):
@@ -260,12 +270,11 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
                 sched_size=min(remaining_prbs,remaining_prbs_c2)*tbs2
                 remaining_prb_list[cell1]=remaining_prbs-np.ceil(sched_size/tbs2)
                 remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(sched_size/tbs2)
-                
             elif(queue_size==0):
                 #print('empty queue -comp')
                 break
             else:
-                print('something went wrong')
+                #print('something went wrong')
             users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
             users[sched_user].queue2.get(sched_size)
             k=k+1
@@ -394,49 +403,27 @@ class ue:
         on_off=1
         counter=0
         start=0
+        max_counter=np.random.exponential(3000)
         while True:
             if(start==0):
                 start=1
-                yield env.timeout(random.randint(0,200))
-            elif(on_off==1 and counter<3000):
+                yield env.timeout(random.randint(0,200)) 
+            elif(on_off==1 and counter<max_counter):
                 self.queue.put(size) #20 bytes
                 self.queue2.put(size) #20 bytes
                 mon= monitor(self.queue.level,self.mon,env)
-                #yield env.timeout(poisson.rvs(6, 1))
-                #print('On Phase')
-                #print(self.queue.level)
                 counter=counter+20
-                #print(counter)
                 yield env.timeout(20) #every 20ms new packet
             elif(on_off==0):
                 on_off=1
-
-                yield env.timeout(3000) #3s no packet to be sent
-            elif(on_off==1 and counter>=3000):
+                off_time=(truncexpon.rvs(4.9)+2)*1000 #to be checked -> mean=3 and upper limit of 6.9
+                yield env.timeout(off_time) #3s no packet to be sent
+            elif(on_off==1 and counter>=max_counter):
                 on_off=0
                 counter=0
+                max_counter=np.random.exponential(3)*1000
                 #print('change from ON-OFF')
-            
-    def user_packets(self,env,packet_arr):
-        while True:
-            #print('o-user')
-            self.queue.put(2000)
-            self.queue2.put(2000) 
-            yield env.timeout(poisson.rvs(packet_arr, 1))
-            
-
-    def streaming_user(self,env):
-        while True:
-            #print('o-user')
-            self.queue.put(3000) #1080p-> 1.5 Mbps (normal 1500)
-            self.queue2.put(s3000) #1080p-> 1.5 Mbps 
-            yield env.timeout(2)
-
-
-    def best_effort(self,env):
-            self.queue.put(100000000) 
-            self.queue2.put(100000000)
-            
+   
     def ftp_user(self,env):
         while True:
             #print('o-user')
@@ -444,6 +431,19 @@ class ue:
             self.queue.put(size) #2MByte -> 16000000 Bit & 180s reading time
             self.queue2.put(size) 
             yield env.timeout(np.random.exponential(180*1000))
+
+    def best_effort(self,env,size):
+        while True:
+            self.queue.put(size) 
+            self.queue2.put(size)
+            yield env.timeout(10)
+
+    def streaming_user(self,env):
+        while True:
+            #print('o-user')
+            self.queue.put(3000) #1080p-> 1.5 Mbps (normal 1500)
+            self.queue2.put(3000) #1080p-> 1.5 Mbps 
+            yield env.timeout(2)
     
     #Noch sehr vereinfacht!!!
     def sinr_variator(self,env):
@@ -452,3 +452,4 @@ class ue:
             self.sinr=self.sinr +change
             self.sinr2=self.sinr2+change 
         yield env.timeout(2000)
+        
