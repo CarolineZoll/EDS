@@ -218,7 +218,7 @@ def metric_list_C(users,sched_exp,counter,usage):
 def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
     
     alpha=-np.log10(0.01)/100
-    while True: #größte Warteschlange wird auch bedient
+    while True: 
         counter=env.now+1 #counts the number of scheduling procedures
         yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
         metric=np.array([]) 
@@ -240,7 +240,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
             sched_user=sched_user_list[k]
             cell1=int(users[sched_user].cell1)
             cell2=int(users[sched_user].cell2)
-            queue_size=users[sched_user].queue.level
+            queue_size=users[sched_user].queue2.level
             tbs=users[sched_user].tbs
             tbs2=users[sched_user].tbs2
             remaining_prbs=remaining_prb_list[cell1]
@@ -250,7 +250,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
             #serving cell has no resources left -> no scheduling 
             sched_size=0
             if(remaining_prbs_c2==0):
-                #print('keine Res mehr frei')
+                print('keine Res mehr frei')
                 continue
             #cell to coordinate with has no resources left -> without comp
             elif(remaining_prbs_c2==0):
@@ -274,7 +274,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
                 #print('empty queue -comp')
                 break
             else:
-                print('something went wrong')
+                #print('something went wrong')
             users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
             users[sched_user].queue2.get(sched_size)
             k=k+1
@@ -432,9 +432,11 @@ class ue:
             self.queue2.put(size) 
             yield env.timeout(np.random.exponential(180*1000))
 
-    def best_effort(self,env):
-            self.queue.put(100000000) 
-            self.queue2.put(100000000)
+    def best_effort(self,env,size):
+        while True:
+            self.queue.put(size) 
+            self.queue2.put(size)
+            yield env.timeout(10)
 
     def streaming_user(self,env):
         while True:

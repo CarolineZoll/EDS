@@ -230,7 +230,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
             sched_user=sched_user_list[k]
             cell1=int(users[sched_user].cell1)
             cell2=int(users[sched_user].cell2)
-            queue_size=users[sched_user].queue.level
+            queue_size=users[sched_user].queue2.level
             tbs=users[sched_user].tbs
             tbs2=users[sched_user].tbs2
             remaining_prbs=remaining_prb_list[cell1]
