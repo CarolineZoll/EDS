@@ -9,13 +9,6 @@ SCHEDULE_T=2 #Clock des Schedulers
 alpha=-np.log10(0.01)/100
 
 
-def lognormal(mean):
-    while True:
-        file = np.random.lognormal(mean=np.log(mean),size=None)
-        if file <= 5000000*8:
-            break
-    return file
-
 
 def ue_to_df(users):
     df=pd.DataFrame()
@@ -428,22 +421,9 @@ class ue:
     def streaming_user(self,env):
         while True:
             #print('o-user')
-            self.queue.put(3000) #1080p-> 1.5 Mbps (normal 1500)
-            self.queue2.put(s3000) #1080p-> 1.5 Mbps 
+            self.queue.put(150) #1080p-> 1.5 Mbps (normal 1500)
+            self.queue2.put(150) #1080p-> 1.5 Mbps 
             yield env.timeout(2)
-
-
-    def best_effort(self,env):
-            self.queue.put(100000000) 
-            self.queue2.put(100000000)
-            
-    def ftp_user(self,env):
-        while True:
-            #print('o-user')
-            size=lognormal(16000000)
-            self.queue.put(size) #2MByte -> 16000000 Bit & 180s reading time
-            self.queue2.put(size) 
-            yield env.timeout(np.random.exponential(180*1000))
     
     #Noch sehr vereinfacht!!!
     def sinr_variator(self,env):
