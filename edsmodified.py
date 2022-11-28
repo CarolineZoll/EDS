@@ -399,7 +399,7 @@ class ue:
         else:
             self.comp=np.array(0) 
         
-    def rt_user(self,env):
+    def rt_user(self,env,size):
         on_off=1
         counter=0
         start=0
@@ -409,8 +409,8 @@ class ue:
                 start=1
                 yield env.timeout(random.randint(0,200)) 
             elif(on_off==1 and counter<max_counter):
-                self.queue.put(160) #20 bytes
-                self.queue2.put(160) #20 bytes
+                self.queue.put(size) #20 bytes
+                self.queue2.put(size) #20 bytes
                 mon= monitor(self.queue.level,self.mon,env)
                 counter=counter+20
                 yield env.timeout(20) #every 20ms new packet
