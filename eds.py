@@ -102,6 +102,14 @@ def monitor(value,monitor,env):
     #prb_number=round((count/(count2+count))*max_prb)
     #return prb_number   
     
+def calculate_prb_number2(users,max_prb):
+    count=0
+    for i in users:
+        if(i.comp==1):
+            count+=1
+    prb_number=round(count*2/len(users)*max_prb)
+    return prb_number
+
 def calculate_prb_number(users,max_prb):
     count=0
     count2=0
@@ -146,12 +154,12 @@ def calculate_tbs(sinr,sinr2):
     sinr2=int(sinr2)
     if(sinr>30 or sinr2>30):
         print('sinr out of range')
-        tbs=30
-        tbs2=30
+        sinr=30
+        sinr2=30
     elif(sinr<-10):
         print('sinr out of range')
-        tbs=-10
-        tbs2=-10
+        sinr=-10
+        sinr2=-10
     else:
         mapping=pd.read_csv('Data/sinr-tbs-mapping.csv')
         tbs=mapping.iloc[sinr].values[1]
@@ -215,7 +223,7 @@ def metric_list_C(users,sched_exp,counter,usage):
     return sched_user_list
 
 
-def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
+def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number,sched_metric):
     
     alpha=-np.log10(0.01)/100
     while True: 
@@ -227,7 +235,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
             users[i].mon2= monitor(users[i].queue.level,users[i].mon2,env)
             users[i].mr2_mon=monitor(users[i].mR2,users[i].mr2_mon,env)
         
-        sched_user_list=metric_list_C(users,[1,1],env.now,'comp')
+        sched_user_list=metric_list_C(users,sched_metric,env.now,'comp')
         
         remaining_prb_list={}
         for i in cluster:
@@ -274,7 +282,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
                 #print('empty queue -comp')
                 break
             else:
-                #print('something went wrong')
+                print('something went wrong')
             users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
             users[sched_user].queue2.get(sched_size)
             k=k+1
@@ -290,8 +298,7 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number):
 #scheduler takes packets from the queues according to the capacity of each user
 def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, sched_metric):
 
-    bits1=0
-    bits2=0
+   
     while True: #größte Warteschlange wird auch bedient
         counter=env.now+1 
         yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
@@ -304,7 +311,7 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
             i.mr2_mon=monitor(i.mR2,i.mr2_mon,env)
         
         
-        sched_user_list=metric_list_nC(users,[1,1],counter)
+        sched_user_list=metric_list_nC(users,sched_metric,counter)
 
         remaining_prbs=prb_number
         k=0
@@ -335,7 +342,7 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
         #CoMP-Scheduling Process- Users with normal scheduling
         ############################
         
-        sched_user_list = metric_list_C(users2,[1,1],counter,'nocomp') #calculates the ordered list with ues
+        sched_user_list = metric_list_C(users2,sched_metric,counter,'nocomp') #calculates the ordered list with ues
         
         remaining_prbs=prb_number2
         k=0
