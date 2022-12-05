@@ -74,7 +74,6 @@ def ue_to_df(users):
 
 def df_to_ue_lists(df,cluster,thr,env):
 
-    cluster=[19,20]
     df_filter=df.groupby('PCI Serving')
     ue_dict={}
     for i in cluster:
@@ -150,8 +149,8 @@ def get_dataframe(users):
     return df
 
 def calculate_tbs(sinr,sinr2):
-    sinr=int(sinr)
-    sinr2=int(sinr2)
+    sinr=round(sinr)
+    sinr2=round(sinr2)
     if(sinr>30 or sinr2>30):
         print('sinr out of range')
         sinr=30
@@ -160,11 +159,12 @@ def calculate_tbs(sinr,sinr2):
         print('sinr out of range')
         sinr=-10
         sinr2=-10
-    else:
-        mapping=pd.read_csv('Data/sinr-tbs-mapping.csv')
-        tbs=mapping.iloc[sinr].values[1]
-        tbs2=mapping.iloc[sinr2].values[1]
+    else: 
+        mapping=pd.read_csv('Data/sinr-tbs-mapping.csv',index_col='Unnamed: 0')
+        tbs=mapping.loc[sinr]['tbs']
+        tbs2=mapping.loc[sinr2]['tbs']
     return tbs,tbs2
+
 
 def metric_list_nC(users,sched_exp,counter):
     e1=sched_exp[0]
@@ -245,6 +245,9 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number,sched_metric):
         free_res=1
         
         while(free_res==1):
+            if(k==len(sched_user_list)):
+                #print('remaining res comp-central:',free_res)
+                break
             sched_user=sched_user_list[k]
             cell1=int(users[sched_user].cell1)
             cell2=int(users[sched_user].cell2)
@@ -257,14 +260,18 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number,sched_metric):
             #print('Resourcen:',remaining_prb_list[cell2])
             #serving cell has no resources left -> no scheduling 
             sched_size=0
-            if(remaining_prbs_c2==0):
+            if(remaining_prbs==0):
                 print('keine Res mehr frei')
                 continue
             #cell to coordinate with has no resources left -> without comp
             elif(remaining_prbs_c2==0):
                 #print('ohne CoMP')
-                sched_size=queue_size
-                remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs)
+                if((queue_size/tbs)>remaining_prbs):
+                    sched_size=remaining_prbs*tbs
+                    remaining_prb_list[cell1]=0
+                else:
+                    sched_size=queue_size
+                    remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs)
                 
             elif((queue_size/tbs2)<=remaining_prbs and (queue_size/tbs2)<=remaining_prbs_c2 and queue_size>0):
             #comp can be used
@@ -274,10 +281,12 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number,sched_metric):
                 remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(queue_size/tbs2)
             #one of the cells has not enough resources left 
             elif((queue_size/tbs2)>remaining_prbs or (queue_size/tbs2)>remaining_prbs_c2):
-                #print('mit CoMP - v2')
+                print('mit CoMP - v2')
+                #print(queue_size/tbs2)
                 sched_size=min(remaining_prbs,remaining_prbs_c2)*tbs2
-                remaining_prb_list[cell1]=remaining_prbs-np.ceil(sched_size/tbs2)
-                remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(sched_size/tbs2)
+                #print(sched_size)
+                remaining_prb_list[cell1]=remaining_prbs-min(remaining_prbs,remaining_prbs_c2)
+                remaining_prb_list[cell2]=remaining_prbs_c2-(sched_size/tbs2)
             elif(queue_size==0):
                 #print('empty queue -comp')
                 break
@@ -316,6 +325,9 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
         remaining_prbs=prb_number
         k=0
         while(remaining_prbs>0):
+            if(k==len(sched_user_list)):
+                print('remaining res comp1:',remaining_prbs)
+                break
             sched_user=sched_user_list[k]
             queue_size=users[sched_user].queue.level
             tbs=users[sched_user].tbs
@@ -348,6 +360,9 @@ def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, s
         k=0
         #print('New scheduling round')
         while(remaining_prbs>0):
+            if(k==len(sched_user_list)):
+                print('remaining res comp1:',remaining_prbs)
+                break
             sched_user=sched_user_list[k]
             queue_size=users2[sched_user].queue2.level
             tbs=users2[sched_user].tbs
