@@ -281,10 +281,8 @@ def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number,sched_metric):
                 remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(queue_size/tbs2)
             #one of the cells has not enough resources left 
             elif((queue_size/tbs2)>remaining_prbs or (queue_size/tbs2)>remaining_prbs_c2):
-                print('mit CoMP - v2')
-                #print(queue_size/tbs2)
+                #print('mit CoMP - v2')
                 sched_size=min(remaining_prbs,remaining_prbs_c2)*tbs2
-                #print(sched_size)
                 remaining_prb_list[cell1]=remaining_prbs-min(remaining_prbs,remaining_prbs_c2)
                 remaining_prb_list[cell2]=remaining_prbs_c2-(sched_size/tbs2)
             elif(queue_size==0):
