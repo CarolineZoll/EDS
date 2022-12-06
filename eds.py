@@ -81,9 +81,30 @@ def df_to_ue_lists(df,cluster,thr,env):
         ue_list=np.array([])
         df2=df_filter.get_group(i)
         for j in df2.index:
-            ue_list=np.append(ue_list, ue(df.iloc[j]['JT_1 SINR [lin]'],df.iloc[j]['JT_2 SINR [lin]'],df.iloc[j]['PCI Serving'],df.iloc[j]['PCI Coord'],env,df.iloc[j]['usage'], thr,df.iloc[j]['id']))
+            ue_list=np.append(ue_list, ue(df.loc[j]['JT_1 SINR [dB]'],df.loc[j]['JT_2 SINR [dB]'],df.loc[j]['PCI Serving'],df.loc[j]['PCI Coord'],env,df.loc[j]['usage'], thr,j))
         ue_dict[i]= ue_list
     return ue_dict
+
+def get_user_from_cluster(ue_dict,cluster):
+    ue_dict_red={}
+    for i in cluster:
+        liste=np.array([])
+        for j in ue_dict[i]:
+            if(i==cluster[0]):
+                if(j.cell2==cluster[1]):
+                    liste=np.append(liste,j)
+            elif(i==cluster[1]):
+                if(j.cell2==cluster[0]):
+                    liste=np.append(liste,j)
+        ue_dict_red.update({i:liste})
+    ue_dict_red2={}
+    for i in [775,133]:
+        ue_dict_red2[i]=ue_dict_red[i][0:10]
+
+    ue_all=np.array([])
+    for i in cluster:
+        ue_all=np.append(ue_all,ue_dict_red2[i])
+    return ue_dict_red2,ue_all
 
 #function to monitor the level of the different queues
 def monitor(value,monitor,env): 
@@ -400,8 +421,8 @@ class ue:
         self.cp2=0.5*0.7*20000000*np.log2(1+np.power(10,sinr2/10))/8000 #division by 8000 to determine number of bits that can be transmitted per TTI (1ms)
         self.cell1=cell1
         self.cell2=cell2
-        self.mR=0.1 #mittlere Rate
-        self.mR2=0.1 #mittlere Rate
+        self.mR=0.01 #mittlere Rate
+        self.mR2=0.01 #mittlere Rate
         self.queue=simpy.Container(env)
         self.queue2=simpy.Container(env)
         self.mon={}
@@ -458,6 +479,12 @@ class ue:
             self.queue2.put(size)
             yield env.timeout(10)
 
+    def best_effort_stat(self,env,time):
+        while True:
+            self.queue.put(4000) 
+            self.queue2.put(4000)
+            yield env.timeout(round(np.random.exponential(time)))
+            
     def streaming_user(self,env):
         while True:
             #print('o-user')
