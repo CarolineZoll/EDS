@@ -500,3 +500,4 @@ class ue:
             self.sinr2=self.sinr2+change 
         yield env.timeout(2000)
         
+        
