@@ -81,7 +81,7 @@ def df_to_ue_lists(df,cluster,thr,env):
         ue_list=np.array([])
         df2=df_filter.get_group(i)
         for j in df2.index:
-            ue_list=np.append(ue_list, ue(df.loc[j]['JT_1 SINR [dB]'],df.loc[j]['JT_2 SINR [dB]'],df.loc[j]['PCI Serving'],df.loc[j]['PCI Coord'],env,df.loc[j]['usage'], thr,j))
+            ue_list=np.append(ue_list, ue(df.loc[j]['JT_1 SINR [dB]'],df.loc[j]['JT_2 SINR [dB]'],df.loc[j]['PCI Serving'],df.loc[j]['PCI Coord'],df.loc[j]['x'],df.loc[j]['y'],env,df.loc[j]['usage'], thr,j))
         ue_dict[i]= ue_list
     return ue_dict
 
@@ -476,7 +476,7 @@ class sched_inst:
         
 
 class ue:
-    def __init__(self,sinr,sinr2,cell1,cell2,env,qos,thr,id):
+    def __init__(self,sinr,sinr2,cell1,cell2,x,y,env,qos,thr,id):
         self.sinr=sinr
         self.sinr2=sinr2
         self.tbs,self.tbs2=calculate_tbs(sinr,sinr2)
@@ -500,6 +500,8 @@ class ue:
         self.bits2=0
         self.mr_mon={}
         self.mr2_mon={}
+        self.x=x
+        self.y=y
         if(self.gain >thr):
             self.comp=np.array(1)
         else:
