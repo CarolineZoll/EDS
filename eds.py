@@ -85,7 +85,7 @@ def df_to_ue_lists(df,cluster,thr,env):
         ue_dict[i]= ue_list
     return ue_dict
 
-def get_user_from_cluster(ue_dict,cluster):
+def get_user_from_cluster(ue_dict,cluster,ue_nr):
     ue_dict_red={}
     for i in cluster:
         liste=np.array([])
@@ -98,13 +98,36 @@ def get_user_from_cluster(ue_dict,cluster):
                     liste=np.append(liste,j)
         ue_dict_red.update({i:liste})
     ue_dict_red2={}
-    for i in [775,133]:
-        ue_dict_red2[i]=ue_dict_red[i][0:10]
+    for i in cluster:
+        ue_dict_red2[i]=ue_dict_red[i][0:ue_nr]
 
     ue_all=np.array([])
     for i in cluster:
         ue_all=np.append(ue_all,ue_dict_red2[i])
     return ue_dict_red2,ue_all
+
+def get_user_from_cluster_random(ue_dict,cluster,ue_nr):
+    ue_dict_red={}
+    for i in cluster:
+        liste=np.array([])
+        for j in ue_dict[i]:
+            if(i==cluster[0]):
+                if(j.cell2==cluster[1]):
+                    liste=np.append(liste,j)
+            elif(i==cluster[1]):
+                if(j.cell2==cluster[0]):
+                    liste=np.append(liste,j)
+        ue_dict_red.update({i:liste})
+    ue_dict_red2={}
+    for i in cluster:
+        liste=random.sample(range(1, len(ue_dict_red[i])), ue_nr)
+        ue_dict_red2[i]=ue_dict_red[i][liste]
+
+    ue_all=np.array([])
+    for i in cluster:
+        ue_all=np.append(ue_all,ue_dict_red2[i])
+    return ue_dict_red2,ue_all
+
 
 #function to monitor the level of the different queues
 def monitor(value,monitor,env): 
@@ -127,7 +150,7 @@ def calculate_prb_number2(users,max_prb):
     for i in users:
         if(i.comp==1):
             count+=1
-    prb_number=round(count*2/len(users)*max_prb)
+    prb_number=round((count*2)/(count+len(users))*max_prb)
     return prb_number
 
 def calculate_prb_number(users,max_prb):
@@ -186,229 +209,270 @@ def calculate_tbs(sinr,sinr2):
         tbs2=mapping.loc[sinr2]['tbs']
     return tbs,tbs2
 
-
-def metric_list_nC(users,sched_exp,counter):
-    e1=sched_exp[0]
-    e2=sched_exp[1]
-    metric=np.array([])
-
-    for i in users: 
-        if(i.qos==1 or i.qos==2):
-            metric=np.append(metric, (alpha*i.queue.level*((i.cp)**e1/(i.mR)**e2)))  #list the metric of all UEs in the process 
-            i.mR=(1-1/counter)*i.mR 
-            i.mR=(1-1/(counter+1))*i.mR #Ratenanpassung für alle Nutzer    
-        elif(i.qos==0):
-            if(i.queue.level>0):
-                metric=np.append(metric,((i.cp)**e1/(i.mR**e2)))
-                i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
-                i.mR=(1-1/(counter+1))*i.mR
-            elif(i.queue.level==0):
-                metric=np.append(metric,-1)
-                i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
-                i.mR=(1-1/(counter+1))*i.mR
-            else:
-                print('mistake')
-        else:
-            print('mistake')
-    sched_user_list = (-metric).argsort() #sort UEs by metric that will be used for scheduling
-    return sched_user_list
-
-def metric_list_C(users,sched_exp,counter,usage):
-    e1=sched_exp[0]
-    e2=sched_exp[1]
-    metric=np.array([])
-    for i in users: 
-        if(usage=='nocomp'):
-            cp=i.cp
-        elif(usage=='comp'):
-            cp=i.cp2
-            
-        if(i.qos==1 or i.qos==2):
-            metric=np.append(metric, (alpha*i.queue2.level*(cp**e1/(i.mR2)**e2)))  #list the metric of all UEs in the process 
-            i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer   
-            i.mR2=(1-1/(counter+1))*i.mR2
-        elif(i.qos==0):
-            if(i.queue2.level>0):
-                metric=np.append(metric,((cp)**e1/(i.mR2)**e2))
-                i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
-                i.mR2=(1-1/(counter+1))*i.mR2
-            elif(i.queue2.level==0):
-                metric=np.append(metric,-1)
-                i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
-                i.mR2=(1-1/(counter+1))*i.mR2
-            else:
-                print('mistake')
-        else:
-            print('mistake')
-    sched_user_list = (-metric).argsort() #sort UEs by metric that will be used for scheduling
-    return sched_user_list
-
-
-def central_scheduler(env, users, SCHEDULE_T,cluster, prb_number,sched_metric):
+class sched_inst:
     
-    alpha=-np.log10(0.01)/100
-    while True: 
-        counter=env.now+1 #counts the number of scheduling procedures
-        yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
-        metric=np.array([]) 
+    def __init__(self,env):
+        self.rem_prb={}
+        self.rem_req={}
+        self.rem_prb_c={}
+        self.rem_req_c={}
         
-        for i in np.arange(len(users)):
-            users[i].mon2= monitor(users[i].queue.level,users[i].mon2,env)
-            users[i].mr2_mon=monitor(users[i].mR2,users[i].mr2_mon,env)
         
-        sched_user_list=metric_list_C(users,sched_metric,env.now,'comp')
-        
-        remaining_prb_list={}
-        for i in cluster:
-            remaining_prb_list[i]=prb_number
-            
-        k=0
-        free_res=1
-        
-        while(free_res==1):
-            if(k==len(sched_user_list)):
-                #print('remaining res comp-central:',free_res)
-                break
-            sched_user=sched_user_list[k]
-            cell1=int(users[sched_user].cell1)
-            cell2=int(users[sched_user].cell2)
-            queue_size=users[sched_user].queue2.level
-            tbs=users[sched_user].tbs
-            tbs2=users[sched_user].tbs2
-            remaining_prbs=remaining_prb_list[cell1]
-            remaining_prbs_c2=remaining_prb_list[cell2]
-            #print('Resourcen:',remaining_prb_list[cell1])
-            #print('Resourcen:',remaining_prb_list[cell2])
-            #serving cell has no resources left -> no scheduling 
-            sched_size=0
-            if(remaining_prbs==0):
-                print('keine Res mehr frei')
-                continue
-            #cell to coordinate with has no resources left -> without comp
-            elif(remaining_prbs_c2==0):
-                #print('ohne CoMP')
-                if((queue_size/tbs)>remaining_prbs):
-                    sched_size=remaining_prbs*tbs
-                    remaining_prb_list[cell1]=0
+    def metric_list_nC(self, users,sched_exp,counter):
+        e1=sched_exp[0]
+        e2=sched_exp[1]
+        metric=np.array([])
+
+        for i in users: 
+            if(i.qos==1 or i.qos==2):
+                metric=np.append(metric, (alpha*i.queue.level*((i.cp)**e1/(i.mR)**e2)))  #list the metric of all UEs in the process 
+                i.mR=(1-1/counter)*i.mR 
+                i.mR=(1-1/(counter+1))*i.mR #Ratenanpassung für alle Nutzer    
+            elif(i.qos==0):
+                if(i.queue.level>0):
+                    metric=np.append(metric,((i.cp)**e1/(i.mR**e2)))
+                    i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
+                    i.mR=(1-1/(counter+1))*i.mR
+                elif(i.queue.level==0):
+                    metric=np.append(metric,-1)
+                    i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
+                    i.mR=(1-1/(counter+1))*i.mR
                 else:
-                    sched_size=queue_size
-                    remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs)
-                
-            elif((queue_size/tbs2)<=remaining_prbs and (queue_size/tbs2)<=remaining_prbs_c2 and queue_size>0):
-            #comp can be used
-                #print('mit CoMP')
-                sched_size=queue_size
-                remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs2)
-                remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(queue_size/tbs2)
-            #one of the cells has not enough resources left 
-            elif((queue_size/tbs2)>remaining_prbs or (queue_size/tbs2)>remaining_prbs_c2):
-                #print('mit CoMP - v2')
-                sched_size=min(remaining_prbs,remaining_prbs_c2)*tbs2
-                remaining_prb_list[cell1]=remaining_prbs-min(remaining_prbs,remaining_prbs_c2)
-                remaining_prb_list[cell2]=remaining_prbs_c2-(sched_size/tbs2)
-            elif(queue_size==0):
-                #print('empty queue -comp')
-                break
+                    print('mistake')
             else:
-                print('something went wrong')
-            users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
-            users[sched_user].queue2.get(sched_size)
-            k=k+1
-            free_res=0
+                print('mistake')
+        sched_user_list = (-metric).argsort() #sort UEs by metric that will be used for scheduling
+        return sched_user_list
+
+    def metric_list_C(self, users,sched_exp,counter,usage):
+        e1=sched_exp[0]
+        e2=sched_exp[1]
+        metric=np.array([])
+        for i in users: 
+            if(usage=='nocomp'):
+                cp=i.cp
+            elif(usage=='comp'):
+                cp=i.cp2
+
+            if(i.qos==1 or i.qos==2):
+                metric=np.append(metric, (alpha*i.queue2.level*(cp**e1/(i.mR2)**e2)))  #list the metric of all UEs in the process 
+                i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer   
+                i.mR2=(1-1/(counter+1))*i.mR2
+            elif(i.qos==0):
+                if(i.queue2.level>0):
+                    metric=np.append(metric,((cp)**e1/(i.mR2)**e2))
+                    i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
+                    i.mR2=(1-1/(counter+1))*i.mR2
+                elif(i.queue2.level==0):
+                    metric=np.append(metric,-1)
+                    i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
+                    i.mR2=(1-1/(counter+1))*i.mR2
+                else:
+                    print('mistake')
+            else:
+                print('mistake')
+        sched_user_list = (-metric).argsort() #sort UEs by metric that will be used for scheduling
+        return sched_user_list
+
+
+    def central_scheduler(self, env, users, SCHEDULE_T,cluster, prb_number,sched_metric):
+
+        alpha=-np.log10(0.01)/100
+        while True: 
+            counter=env.now+1 #counts the number of scheduling procedures
+            yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
+            metric=np.array([]) 
+
+            for i in np.arange(len(users)):
+                users[i].mon2= monitor(users[i].queue.level,users[i].mon2,env)
+                users[i].mr2_mon=monitor(users[i].mR2,users[i].mr2_mon,env)
+
+            sched_user_list=self.metric_list_C(users,sched_metric,env.now,'comp')
+
+            remaining_prb_list={}
             for i in cluster:
-                if(remaining_prb_list[i]!=0):
-                    free_res=1
-                    
-        
-        
+                remaining_prb_list[i]=prb_number
 
+            k=0
+            free_res=1
 
-#scheduler takes packets from the queues according to the capacity of each user
-def scheduler(env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, sched_metric):
-
-   
-    while True: #größte Warteschlange wird auch bedient
-        counter=env.now+1 
-        yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
-        metric=np.array([]) 
-        
-        for i in users:
-            i.mon= monitor(i.queue.level,i.mon,env)
-            i.mr_mon=monitor(i.mR,i.mr_mon,env)
-        for i in users2:
-            i.mr2_mon=monitor(i.mR2,i.mr2_mon,env)
-        
-        
-        sched_user_list=metric_list_nC(users,sched_metric,counter)
-
-        remaining_prbs=prb_number
-        k=0
-        while(remaining_prbs>0):
-            if(k==len(sched_user_list)):
-                print('remaining res comp1:',remaining_prbs)
-                break
-            sched_user=sched_user_list[k]
-            queue_size=users[sched_user].queue.level
-            tbs=users[sched_user].tbs
-            sched_size=0
-            if((queue_size/tbs)<=remaining_prbs and queue_size>0):
-                sched_size=queue_size
-                remaining_prbs=remaining_prbs-np.ceil(queue_size/tbs)
-            elif((queue_size/tbs)>remaining_prbs):
-                sched_size=remaining_prbs*tbs
-                remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
-            elif(queue_size==0):
-                #print('empty queue - no comp')
+            while(free_res==1):
+                if(k==len(sched_user_list)):
+                    #print('remaining res comp-central:',free_res)
+                    break
+                sched_user=sched_user_list[k]
+                cell1=int(users[sched_user].cell1)
+                cell2=int(users[sched_user].cell2)
+                queue_size=users[sched_user].queue2.level
+                tbs=users[sched_user].tbs
+                tbs2=users[sched_user].tbs2
+                remaining_prbs=remaining_prb_list[cell1]
+                remaining_prbs_c2=remaining_prb_list[cell2]
                 sched_size=0
-                break
-            else:
-                print('something went wrong')
-     
-            users[sched_user].mR=users[sched_user].mR+(1/counter)*sched_size
-            users[sched_user].queue.get(sched_size)
-            users[sched_user].bits+=sched_size
-            k=k+1
+                if(remaining_prbs==0):
+                    print('keine Res mehr frei')
+                    continue
+                #cell to coordinate with has no resources left -> without comp
+                elif(remaining_prbs_c2==0):
+                    #print('ohne CoMP')
+                    if((queue_size/tbs)>remaining_prbs):
+                        sched_size=remaining_prbs*tbs
+                        remaining_prb_list[cell1]=0
+                    else:
+                        sched_size=queue_size
+                        remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs)
 
+                elif((queue_size/tbs2)<=remaining_prbs and (queue_size/tbs2)<=remaining_prbs_c2 and queue_size>0):
+                #comp can be used
+                    #print('mit CoMP')
+                    sched_size=queue_size
+                    remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs2)
+                    remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(queue_size/tbs2)
+                #one of the cells has not enough resources left 
+                elif((queue_size/tbs2)>remaining_prbs or (queue_size/tbs2)>remaining_prbs_c2):
+                    #print('mit CoMP - v2')
+                    sched_size=min(remaining_prbs,remaining_prbs_c2)*tbs2
+                    remaining_prb_list[cell1]=remaining_prbs-min(remaining_prbs,remaining_prbs_c2)
+                    remaining_prb_list[cell2]=remaining_prbs_c2-(sched_size/tbs2)
+                elif(queue_size==0):
+                    self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
+                    ue_re=np.array([])
+                    for i in users:
+                        ue_re=np.append(ue_re,i.queue2.level/i.tbs)
+                    self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+                    break
+                else:
+                    print('something went wrong')
+                users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
+                users[sched_user].queue2.get(sched_size)
+                k=k+1
+                free_res=0
+                for i in cluster:
+                    if(remaining_prb_list[i]!=0):
+                        free_res=1
                 
-        #CoMP-Scheduling Process- Users with normal scheduling
-        ############################
-        
-        sched_user_list = metric_list_C(users2,sched_metric,counter,'nocomp') #calculates the ordered list with ues
-        
-        remaining_prbs=prb_number2
-        k=0
-        #print('New scheduling round')
-        while(remaining_prbs>0):
-            if(k==len(sched_user_list)):
-                print('remaining res comp1:',remaining_prbs)
-                break
-            sched_user=sched_user_list[k]
-            queue_size=users2[sched_user].queue2.level
-            tbs=users2[sched_user].tbs
-            sched_size=0
-            if((queue_size/tbs)<=remaining_prbs and queue_size>0):
-                sched_size=queue_size
-                remaining_prbs=remaining_prbs-np.ceil(queue_size/tbs)
-            elif((queue_size/tbs)>remaining_prbs):
-                sched_size=remaining_prbs*tbs
-                remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
+                self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
+                ue_re=np.array([])
+                for i in users:
+                    ue_re=np.append(ue_re,i.queue2.level/i.tbs)
+                    
+                self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+                    
                 
-            elif(queue_size==0):
-                #print('empty queue - comp-scheduling: no comp user')
-                break
-            else:
-                print('something went wrong')
-                
-            #print('normal scheduler - comp',env.now)
-            #print('normal scheduler - comp -> id:',sched_user)
-            #print('Rate before',users[sched_user].mR)
-            users2[sched_user].mR2=users2[sched_user].mR2+(1/counter)*sched_size
-     
-            users2[sched_user].queue2.get(sched_size)
-            users2[sched_user].bits2+=sched_size
 
-            k=k+1
-        ###########################
+
+
+    #scheduler takes packets from the queues according to the capacity of each user
+    def scheduler(self, env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, sched_metric):
+
+
+        while True: #größte Warteschlange wird auch bedient
+            counter=env.now+1 
+            yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
+            metric=np.array([]) 
+
+            for i in users:
+                i.mon= monitor(i.queue.level,i.mon,env)
+                i.mr_mon=monitor(i.mR,i.mr_mon,env)
+            for i in users2:
+                i.mr2_mon=monitor(i.mR2,i.mr2_mon,env)
+
+
+            sched_user_list=self.metric_list_nC(users,sched_metric,counter)
+
+            remaining_prbs=prb_number
+            k=0
+            while(remaining_prbs>0):
+                if(k==len(sched_user_list)):
+                    print('remaining res comp1:',remaining_prbs)
+                    break
+                sched_user=sched_user_list[k]
+                queue_size=users[sched_user].queue.level
+                tbs=users[sched_user].tbs
+                sched_size=0
+                if((queue_size/tbs)<=remaining_prbs and queue_size>0):
+                    sched_size=queue_size
+                    remaining_prbs=remaining_prbs-np.ceil(queue_size/tbs)
+                elif((queue_size/tbs)>remaining_prbs):
+                    sched_size=remaining_prbs*tbs
+                    remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
+                elif(queue_size==0):
+                    
+                    self.rem_prb=monitor(remaining_prbs,self.rem_prb,env)
+                    ue_re=np.array([])
+                    for i in users:
+                        ue_re=np.append(ue_re,i.queue.level)
+                    self.rem_req=monitor(sum(ue_re),self.rem_req,env)
+                    #print('empty queue - no comp')
+                    sched_size=0
+                    break
+                else:
+                    print('something went wrong')
+
+                users[sched_user].mR=users[sched_user].mR+(1/counter)*sched_size
+                users[sched_user].queue.get(sched_size)
+                users[sched_user].bits+=sched_size
+                
+                self.rem_prb=monitor(remaining_prbs,self.rem_prb,env)
+                ue_re=np.array([])
+                for i in users:
+                    ue_re=np.append(ue_re,i.queue.level/i.tbs)
+                self.rem_req=monitor(sum(ue_re),self.rem_req,env)
+                k=k+1
+
+
+            #CoMP-Scheduling Process- Users with normal scheduling
+            ############################
+
+            sched_user_list = self.metric_list_C(users2,sched_metric,counter,'nocomp') #calculates the ordered list with ues
+
+            remaining_prbs=prb_number2
+            k=0
+            #print('New scheduling round')
+            while(remaining_prbs>0):
+                if(k==len(sched_user_list)):
+                    print('remaining res comp1:',remaining_prbs)
+                    break
+                sched_user=sched_user_list[k]
+                queue_size=users2[sched_user].queue2.level
+                tbs=users2[sched_user].tbs
+                sched_size=0
+                if((queue_size/tbs)<=remaining_prbs and queue_size>0):
+                    sched_size=queue_size
+                    remaining_prbs=remaining_prbs-np.ceil(queue_size/tbs)
+                elif((queue_size/tbs)>remaining_prbs):
+                    sched_size=remaining_prbs*tbs
+                    remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
+
+                elif(queue_size==0):
+                    self.rem_prb_c=monitor(remaining_prbs,self.rem_prb_c,env)
+                    ue_re=np.array([])
+                    for i in users:
+                        ue_re=np.append(ue_re,i.queue2.level/i.tbs)
+                    
+                    self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+                    #print('empty queue - comp-scheduling: no comp user')
+                    break
+                else:
+                    print('something went wrong')
+
+                #print('normal scheduler - comp',env.now)
+                #print('normal scheduler - comp -> id:',sched_user)
+                #print('Rate before',users[sched_user].mR)
+                users2[sched_user].mR2=users2[sched_user].mR2+(1/counter)*sched_size
+
+                users2[sched_user].queue2.get(sched_size)
+                users2[sched_user].bits2+=sched_size
+                
+                self.rem_prb_c=monitor(remaining_prbs,self.rem_prb_c,env)
+                ue_re=np.array([])
+                for i in users2:
+                    ue_re=np.append(ue_re,i.queue2.level/i.tbs)
+                    
+                self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+
+                k=k+1
+            ###########################
         
 
 class ue:
@@ -430,6 +494,7 @@ class ue:
         self.metric=self.sinr+self.queue.level
         self.metric2=self.sinr+self.queue.level
         self.gain=self.sinr2-self.sinr
+        #self.gain=self.tbs2/self.tbs
         self.id=id
         self.bits=0
         self.bits2=0
@@ -488,7 +553,7 @@ class ue:
     def streaming_user(self,env):
         while True:
             #print('o-user')
-            self.queue.put(3000) #1080p-> 1.5 Mbps (normal 1500)
+            self.queue.put(3000) #1080p-> 1.5 Mbps 
             self.queue2.put(3000) #1080p-> 1.5 Mbps 
             yield env.timeout(2)
     
@@ -499,5 +564,4 @@ class ue:
             self.sinr=self.sinr +change
             self.sinr2=self.sinr2+change 
         yield env.timeout(2000)
-        
         
