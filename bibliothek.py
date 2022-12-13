@@ -102,14 +102,14 @@ def get_int(df,sectors,cluster):
         comp=0
         if(type(cluster[0])==list or type(cluster[0])== np.ndarray): #if several clusters have been defined
             for z in np.arange(0,len(cluster)): #goes through the clusters
-                if(k1 in cluster[z]): #if serving cell is contained in the cluster
+                if(str(k1) in cluster[z]): #if serving cell is contained in the cluster
                     k=k.drop(cluster[z]) #Delete cells from the cluster
                     inter.append(sum(np.power(10,df2.loc[j,k]/10))) #all remaining services are added (IF)
                     df2.loc[j,k]=int(-10000) #power is set to 0W
                     comp=1
 
-        elif(type(cluster[0])== str):#if there is only on cluster
-            if(k1 in cluster): # if serving cell is in the cluster
+        elif(type(cluster[0])== str):#if there is only one cluster
+            if(str(k1) in cluster): # if serving cell is in the cluster
                 if(len(cluster)!= len(k)): #if the cluster does not contain all cells
                     k=k.drop(cluster) 
                     inter.append(sum(np.power(10,df2.loc[j,k]/10)))

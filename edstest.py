@@ -81,28 +81,47 @@ def df_to_ue_lists(df,cluster,thr,env):
         ue_list=np.array([])
         df2=df_filter.get_group(i)
         for j in df2.index:
-            ue_list=np.append(ue_list, ue(df.loc[j]['JT_1 SINR [dB]'],df.loc[j]['JT_2 SINR [dB]'],df.loc[j]['PCI Serving'],df.loc[j]['PCI Coord'],df.loc[j]['x'],df.loc[j]['y'],env,df.loc[j]['usage'], thr,j,cluster))
+            ue_list=np.append(ue_list, ue(df.loc[j]['JT_1 SINR [dB]'],df.loc[j]['JT_2 SINR [dB]'],df.loc[j]['PCI Serving'],df.loc[j]['PCI Coord'],df.loc[j]['x'],df.loc[j]['y'],env,df.loc[j]['usage'], thr,j))
         ue_dict[i]= ue_list
     return ue_dict
 
-def restrict_users_to_cluster(ue_dict,cluster):
+def get_user_from_cluster(ue_dict,cluster,ue_nr):
     ue_dict_red={}
     for i in cluster:
         liste=np.array([])
         for j in ue_dict[i]:
             if(i==cluster[0]):
-                liste=np.append(liste,j)
+                if(j.cell2==cluster[1]):
+                    liste=np.append(liste,j)
             elif(i==cluster[1]):
-                liste=np.append(liste,j)
+                if(j.cell2==cluster[0]):
+                    liste=np.append(liste,j)
         ue_dict_red.update({i:liste})
-    return ue_dict_red
-
-def get_user_from_cluster(ue_dict_red,cluster,ue_nr,index):
     ue_dict_red2={}
-    counter=0
     for i in cluster:
-        ue_dict_red2[i]=ue_dict_red[i][index[counter]]
-        counter+=1
+        ue_dict_red2[i]=ue_dict_red[i][0:ue_nr]
+
+    ue_all=np.array([])
+    for i in cluster:
+        ue_all=np.append(ue_all,ue_dict_red2[i])
+    return ue_dict_red2,ue_all
+
+def get_user_from_cluster_random(ue_dict,cluster,ue_nr):
+    ue_dict_red={}
+    for i in cluster:
+        liste=np.array([])
+        for j in ue_dict[i]:
+            if(i==cluster[0]):
+                if(j.cell2==cluster[1]):
+                    liste=np.append(liste,j)
+            elif(i==cluster[1]):
+                if(j.cell2==cluster[0]):
+                    liste=np.append(liste,j)
+        ue_dict_red.update({i:liste})
+    ue_dict_red2={}
+    for i in cluster:
+        liste=random.sample(range(1, len(ue_dict_red[i])), ue_nr)
+        ue_dict_red2[i]=ue_dict_red[i][liste]
 
     ue_all=np.array([])
     for i in cluster:
@@ -180,15 +199,14 @@ def calculate_tbs(sinr,sinr2):
         print('sinr out of range')
         sinr=30
         sinr2=30
-        mapping=pd.read_csv('Data/sinr-tbs-mapping2.csv',index_col='Unnamed: 0')
     elif(sinr<-10):
         print('sinr out of range')
         sinr=-10
         sinr2=-10
+    else: 
         mapping=pd.read_csv('Data/sinr-tbs-mapping2.csv',index_col='Unnamed: 0')
-    mapping=pd.read_csv('Data/sinr-tbs-mapping2.csv',index_col='Unnamed: 0')
-    tbs=mapping.loc[sinr]['tbs']
-    tbs2=mapping.loc[sinr2]['tbs']
+        tbs=mapping.loc[sinr]['tbs']
+        tbs2=mapping.loc[sinr2]['tbs']
     return tbs,tbs2
 
 class sched_inst:
@@ -458,7 +476,7 @@ class sched_inst:
         
 
 class ue:
-    def __init__(self,sinr,sinr2,cell1,cell2,x,y,env,qos,thr,id,cluster):
+    def __init__(self,sinr,sinr2,cell1,cell2,x,y,env,qos,thr,id):
         self.sinr=sinr
         self.sinr2=sinr2
         self.tbs,self.tbs2=calculate_tbs(sinr,sinr2)
@@ -475,8 +493,8 @@ class ue:
         self.mon2={}
         self.metric=self.sinr+self.queue.level
         self.metric2=self.sinr+self.queue.level
-        self.gain=self.sinr2-self.sinr
-        #self.gain=self.tbs2/self.tbs
+        #self.gain=self.sinr2-self.sinr
+        self.gain=self.tbs2/self.tbs
         self.id=id
         self.bits=0
         self.bits2=0
@@ -484,7 +502,7 @@ class ue:
         self.mr2_mon={}
         self.x=x
         self.y=y
-        if(self.gain >thr and (self.cell2 in cluster)):
+        if(self.gain >thr):
             self.comp=np.array(1)
         else:
             self.comp=np.array(0) 
