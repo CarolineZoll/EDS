@@ -14,8 +14,8 @@ def cdf_1(data,legende1,color1,titel,xbereich1,xbereich2,xachse,bins):
     cdf = np.cumsum(pdf)
     # plotting PDF and CDF
     f = plt.figure()
-    f.set_figwidth(10)
-    f.set_figheight(10)
+    f.set_figwidth(6)
+    f.set_figheight(6)
     
     parameters = {'axes.labelsize': 16,'axes.titlesize': 16,'xtick.labelsize':13,'ytick.labelsize':13,'figure.titlesize':20}
     plt.rcParams.update(parameters)
@@ -45,8 +45,8 @@ def cdf_2(data,legende1,color1,data2,legende2,color2,titel,xbereich1,xbereich2,x
 
     # plotting PDF and CDF
     f = plt.figure()
-    f.set_figwidth(10)
-    f.set_figheight(10)
+    f.set_figwidth(6)
+    f.set_figheight(6)
 
     parameters = {'axes.labelsize': 16,'axes.titlesize': 16,'xtick.labelsize':13,'ytick.labelsize':13,'figure.titlesize':20}
     plt.rcParams.update(parameters)
@@ -87,8 +87,8 @@ def cdf_3(data,legende1,color1,data2,legende2,color2,data3,legende3,color3,titel
 
     # plotting PDF and CDF
     f = plt.figure()
-    f.set_figwidth(10)
-    f.set_figheight(10)
+    f.set_figwidth(6)
+    f.set_figheight(6)
 
     parameters = {'axes.labelsize': 16,'axes.titlesize': 16,'xtick.labelsize':13,'ytick.labelsize':13,'figure.titlesize':20}
     plt.rcParams.update(parameters)
@@ -137,8 +137,8 @@ def cdf_4(data,legende1,color1,data2,legende2,color2,data3,legende3,color3,data4
     
     # plotting PDF and CDF
     f = plt.figure()
-    f.set_figwidth(10)
-    f.set_figheight(10)
+    f.set_figwidth(6)
+    f.set_figheight(6)
 
     parameters = {'axes.labelsize': 16,'axes.titlesize': 16,'xtick.labelsize':13,'ytick.labelsize':13,'figure.titlesize':20}
     plt.rcParams.update(parameters)

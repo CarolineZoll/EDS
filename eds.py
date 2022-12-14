@@ -97,17 +97,17 @@ def restrict_users_to_cluster(ue_dict,cluster):
         ue_dict_red.update({i:liste})
     return ue_dict_red
 
-def get_user_from_cluster(ue_dict_red,cluster,ue_nr,index):
-    ue_dict_red2={}
+def get_user_from_cluster(ue_dict,cluster,ue_nr,index):
+    ue_dict_red={}
     counter=0
     for i in cluster:
-        ue_dict_red2[i]=ue_dict_red[i][index[counter]]
+        ue_dict_red[i]=ue_dict[i][index[counter]]
         counter+=1
 
     ue_all=np.array([])
     for i in cluster:
-        ue_all=np.append(ue_all,ue_dict_red2[i])
-    return ue_dict_red2,ue_all
+        ue_all=np.append(ue_all,ue_dict_red[i])
+    return ue_dict_red,ue_all
 
 
 #function to monitor the level of the different queues
