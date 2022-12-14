@@ -81,7 +81,7 @@ def df_to_ue_lists(df,cluster,thr,env):
         ue_list=np.array([])
         df2=df_filter.get_group(i)
         for j in df2.index:
-            ue_list=np.append(ue_list, ue(df.loc[j]['JT_1 SINR [dB]'],df.loc[j]['JT_2 SINR [dB]'],df.loc[j]['PCI Serving'],df.loc[j]['PCI Coord'],df.loc[j]['x'],df.loc[j]['y'],env,df.loc[j]['usage'], thr,j,cluster))
+            ue_list=np.append(ue_list, ue(df.loc[j]['SINR [dB]'],df.loc[j]['SINR-CoMP [dB]'],df.loc[j]['PCI Serving'],df.loc[j]['PCI Coord'],df.loc[j]['lat'],df.loc[j]['lon'],env,df.loc[j]['qos'],thr,j,cluster))
         ue_dict[i]= ue_list
     return ue_dict
 
