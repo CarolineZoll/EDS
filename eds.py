@@ -35,6 +35,9 @@ def ue_to_df(users):
     #metric2_sav=[]
     bit=[]
     bit2=[]
+    mr_rel=[]
+    pci1=[]
+    pci2=[]
     
     for i in users:
         mr.append(i.mR)
@@ -52,24 +55,31 @@ def ue_to_df(users):
         mr2_list.append(i.mr2_mon)
         bit.append(i.bits)
         bit2.append(i.bits2)
+        mr_rel.append(i.mR2/i.mR)
+        pci1.append(i.cell1)
+        pci2.append(i.cell2)
 
     
 
-    df['mr']=mr
-    df['mr2']=mr2
-    df['queue']=queue
-    df['queue2']=queue2
-    df['tbs']=tbs
-    df['tbs2']=tbs2
+    df['mR-no CoMP']=mr
+    df['mR CoMP']=mr2
+    df['mR gain']=mr_rel
+    df['queue - no CoMP']=queue
+    df['queue - CoMP']=queue2
+    df['tbs no CoMP']=tbs
+    df['tbs CoMP']=tbs2
     df['comp']=comp
-    df['sinr1']=sinr
-    df['sinr2']=sinr2
+    df['sinr-no CoMP']=sinr
+    df['sinr CoMP']=sinr2
     df['sinr-gain']=gain
     df['qos']=qos
-    df['mr-Mon']=mr_list
-    df['mr2-Mon']=mr_list
-    df['bit']=bit
-    df['bits']=bit2
+    df['pci 1']=pci1
+    df['pci 2']=pci2
+    
+    #df['mr-Mon']=mr_list
+    #df['mr2-Mon']=mr_list
+    #df['bit']=bit
+    #df['bits']=bit2
     return df
 
 def df_to_ue_lists(df,cluster,thr,env):
