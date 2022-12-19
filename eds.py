@@ -31,8 +31,8 @@ def ue_to_df(users):
     qos=[]
     mr_list=[]
     mr2_list=[]
-    metric_sav=[]
-    metric2_sav=[]
+    #metric_sav=[]
+    #metric2_sav=[]
     bit=[]
     bit2=[]
     
@@ -180,13 +180,13 @@ def calculate_tbs(sinr,sinr2):
         print('sinr out of range')
         sinr=30
         sinr2=30
-        mapping=pd.read_csv('Data/sinr-tbs-mapping2.csv',index_col='Unnamed: 0')
+        mapping=pd.read_csv('Data/sinr-tbs-mapping.csv',index_col='Unnamed: 0')
     elif(sinr<-10):
         print('sinr out of range')
         sinr=-10
         sinr2=-10
-        mapping=pd.read_csv('Data/sinr-tbs-mapping2.csv',index_col='Unnamed: 0')
-    mapping=pd.read_csv('Data/sinr-tbs-mapping2.csv',index_col='Unnamed: 0')
+        mapping=pd.read_csv('Data/sinr-tbs-mapping.csv',index_col='Unnamed: 0')
+    mapping=pd.read_csv('Data/sinr-tbs-mapping.csv',index_col='Unnamed: 0')
     tbs=mapping.loc[sinr]['tbs']
     tbs2=mapping.loc[sinr2]['tbs']
     return tbs,tbs2
@@ -257,7 +257,7 @@ class sched_inst:
         return sched_user_list
 
 
-    def central_scheduler(self, env, users, SCHEDULE_T,cluster, prb_number,sched_metric):
+    def central_scheduler(self, env, users, SCHEDULE_T, cluster, prb_number,sched_metric):
 
         alpha=-np.log10(0.01)/100
         while True: 
