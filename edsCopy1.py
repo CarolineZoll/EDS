@@ -144,27 +144,20 @@ def calculate_prb_number2(users,max_prb):
     prb_number=round((count*2)/(count+len(users))*max_prb)
     return prb_number
 
-def calculate_prb_number(users,max_prb):
-    count=0
-    count2=0
-    for i in np.arange(len(users)):
-        if(users[i].comp ==1):
-            if(users[i].qos==0):
-                count+=1
-            if(users[i].qos==1):
-                count+=4
-            if(users[i].qos==2):
-                count+=75
-                
-        elif(users[i].comp ==0):
-            if(users[i].qos==0):
-                count2+=1
-            if(users[i].qos==1):
-                count2+=4
-            if(users[i].qos==2):
-                count2+=75
-    prb_number=round(count/count2*max_prb)
-    return prb_number
+def calculate_prb_number_comp(ue_all,cluster,max_prb,ue_nr):
+    prb_number_comp={}
+    for i in cluster:
+        c=0
+        c2=0
+        for j in ue_all:
+            if(j.comp==1):
+                if(j.cell1 ==i):
+                    c+=1
+                if(j.cell2==i):
+                    c2+=1
+        prb_number_comp[i]=round(max_prb*(c+c2)/(ue_nr+c2))
+    
+    return prb_number_comp
 
 def get_dataframe(users):
     df=pd.DataFrame()
@@ -282,12 +275,12 @@ class sched_inst:
 
             sched_user_list=self.metric_list_C(users,sched_metric,env.now,'comp')
             
-            remaining_prb_list={}
-            pci_number=0
-            for i in cluster:
-                remaining_prb_list[i]=prb_number[pci_number]
-                pci_number+=1
-            #remaining_prb_list=prb_number
+            #remaining_prb_list={}
+            #pci_number=0
+            #for i in cluster:
+            #    remaining_prb_list[i]=prb_number[pci_number]
+            #    pci_number+=1
+            remaining_prb_list=prb_number.copy()
             
             k=0
             free_res=1
