@@ -271,6 +271,7 @@ class sched_inst:
 
         alpha=-np.log10(0.01)/100
         while True: 
+            print('new sched round')
             counter=env.now+1 #counts the number of scheduling procedures
             yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
             metric=np.array([]) 
@@ -280,15 +281,19 @@ class sched_inst:
                 users[i].mr2_mon=monitor(users[i].mR2,users[i].mr2_mon,env)
 
             sched_user_list=self.metric_list_C(users,sched_metric,env.now,'comp')
-
+            
             remaining_prb_list={}
+            pci_number=0
             for i in cluster:
-                remaining_prb_list[i]=prb_number
-
+                remaining_prb_list[i]=prb_number[pci_number]
+                pci_number+=1
+            #remaining_prb_list=prb_number
+            
             k=0
             free_res=1
 
             while(free_res==1):
+                print('sched ')
                 if(k==len(sched_user_list)):
                     #print('remaining res comp-central:',free_res)
                     break
@@ -300,6 +305,8 @@ class sched_inst:
                 tbs2=users[sched_user].tbs2
                 remaining_prbs=remaining_prb_list[cell1]
                 remaining_prbs_c2=remaining_prb_list[cell2]
+                
+                print('remaining prbs:', remaining_prbs,remaining_prbs_c2)
                 sched_size=0
                 if(remaining_prbs==0):
                     #print('keine Res mehr frei')
@@ -317,7 +324,7 @@ class sched_inst:
 
                 elif((queue_size/tbs2)<=remaining_prbs and (queue_size/tbs2)<=remaining_prbs_c2 and queue_size>0):
                 #comp can be used
-                    #print('mit CoMP')
+                    print('mit CoMP')
                     sched_size=queue_size
                     remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs2)
                     remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(queue_size/tbs2)
@@ -337,8 +344,12 @@ class sched_inst:
                     break
                 else:
                     print('something went wrong')
+                print('ressources after',remaining_prb_list[cell1],remaining_prb_list[cell2])
+                print('sched_size:', sched_size)
+                print('mR before:', users[sched_user].mR2)
                 users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
-                print(users[sched_user].queue2.level)
+                print('mR after:', users[sched_user].mR2)
+                print('counter:', counter)
                 users[sched_user].queue2.get(sched_size)
                 k=k+1
                 free_res=0
