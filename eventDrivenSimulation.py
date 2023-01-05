@@ -75,11 +75,6 @@ def ue_to_df(users):
     df['qos']=qos
     df['pci 1']=pci1
     df['pci 2']=pci2
-    
-    #df['mr-Mon']=mr_list
-    #df['mr2-Mon']=mr_list
-    #df['bit']=bit
-    #df['bits']=bit2
     return df
 
 def df_to_ue_lists(df,cluster,thr,env):
@@ -95,17 +90,6 @@ def df_to_ue_lists(df,cluster,thr,env):
         ue_dict[i]= ue_list
     return ue_dict
 
-#def restrict_users_to_cluster(ue_dict,cluster):
- #   ue_dict_comp={}
-  #  for i in cluster:
-   #     liste=np.array([])
-    #    for j in ue_dict[i]:
-     #       if(i==cluster[0]):
-      #          liste=np.append(liste,j)
-       #     elif(i==cluster[1]):
-        #        liste=np.append(liste,j)
-        #ue_dict_comp.update({i:liste})
-    #return ue_dict_comp
 
 def get_user_from_cluster(ue_dict,cluster,ue_nr,index):
     ue_dict_red={}
@@ -124,19 +108,9 @@ def get_user_from_cluster(ue_dict,cluster,ue_nr,index):
 def monitor(value,monitor,env): 
     monitor.update({env.now: value})
     return monitor
-
-#def calculate_prb_number(users,max_prb):
- #   count=0
-  #  count2=0
-   # for i in users:
-    #    if(i.comp ==1):
-     #       count+=1
-      #  else:
-       #     count2+=1
-    #prb_number=round((count/(count2+count))*max_prb)
-    #return prb_number   
+ 
     
-def calculate_prb_number2(users,max_prb):
+def calculate_prb_number(users,max_prb):
     count=0
     for i in users:
         if(i.comp==1):
@@ -144,27 +118,20 @@ def calculate_prb_number2(users,max_prb):
     prb_number=round((count*2)/(count+len(users))*max_prb)
     return prb_number
 
-def calculate_prb_number(users,max_prb):
-    count=0
-    count2=0
-    for i in np.arange(len(users)):
-        if(users[i].comp ==1):
-            if(users[i].qos==0):
-                count+=1
-            if(users[i].qos==1):
-                count+=4
-            if(users[i].qos==2):
-                count+=75
-                
-        elif(users[i].comp ==0):
-            if(users[i].qos==0):
-                count2+=1
-            if(users[i].qos==1):
-                count2+=4
-            if(users[i].qos==2):
-                count2+=75
-    prb_number=round(count/count2*max_prb)
-    return prb_number
+def calculate_prb_number_comp(ue_all,cluster,max_prb,ue_nr):
+    prb_number_comp={}
+    for i in cluster:
+        c=0
+        c2=0
+        for j in ue_all:
+            if(j.comp==1):
+                if(j.cell1 ==i):
+                    c+=1
+                if(j.cell2==i):
+                    c2+=1
+        prb_number_comp[i]=round(max_prb*(c+c2)/(ue_nr+c2))
+    
+    return prb_number_comp
 
 def get_dataframe(users):
     df=pd.DataFrame()
@@ -271,6 +238,7 @@ class sched_inst:
 
         alpha=-np.log10(0.01)/100
         while True: 
+            #print('new sched round')
             counter=env.now+1 #counts the number of scheduling procedures
             yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
             metric=np.array([]) 
@@ -280,15 +248,19 @@ class sched_inst:
                 users[i].mr2_mon=monitor(users[i].mR2,users[i].mr2_mon,env)
 
             sched_user_list=self.metric_list_C(users,sched_metric,env.now,'comp')
-
-            remaining_prb_list={}
-            for i in cluster:
-                remaining_prb_list[i]=prb_number
-
+            
+            #remaining_prb_list={}
+            #pci_number=0
+            #for i in cluster:
+            #    remaining_prb_list[i]=prb_number[pci_number]
+            #    pci_number+=1
+            remaining_prb_list=prb_number.copy()
+            
             k=0
             free_res=1
 
             while(free_res==1):
+                #print('sched ')
                 if(k==len(sched_user_list)):
                     #print('remaining res comp-central:',free_res)
                     break
@@ -300,6 +272,7 @@ class sched_inst:
                 tbs2=users[sched_user].tbs2
                 remaining_prbs=remaining_prb_list[cell1]
                 remaining_prbs_c2=remaining_prb_list[cell2]
+                
                 sched_size=0
                 if(remaining_prbs==0):
                     #print('keine Res mehr frei')
@@ -338,7 +311,7 @@ class sched_inst:
                 else:
                     print('something went wrong')
                 users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
-                print(users[sched_user].queue2.level)
+
                 users[sched_user].queue2.get(sched_size)
                 k=k+1
                 free_res=0
