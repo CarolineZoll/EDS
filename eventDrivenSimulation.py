@@ -24,6 +24,7 @@ def ue_to_df(users):
     queue2=[]
     tbs=[]
     tbs2=[]
+    tbs3=[]
     comp=[]
     sinr=[]
     sinr2=[]
@@ -45,7 +46,8 @@ def ue_to_df(users):
         queue.append(i.queue.level)
         queue2.append(i.queue2.level)
         tbs.append(i.tbs)
-        tbs2.append(i.tbs2)
+        tbs2.append(i.tbs_comp)
+        tbs3.append(i.tbs_phase)
         comp.append(i.comp)
         sinr.append(i.sinr)
         sinr2.append(i.sinr2)
@@ -68,25 +70,27 @@ def ue_to_df(users):
     df['queue - CoMP']=queue2
     df['tbs no CoMP']=tbs
     df['tbs CoMP']=tbs2
+    df['tbs CoMP phaseshift']=tbs3
     df['comp']=comp
     df['sinr-no CoMP']=sinr
     df['sinr CoMP']=sinr2
+    #df['sinr CoMP phase']=sinr3
     df['sinr-gain']=gain
     df['qos']=qos
-    df['pci 1']=pci1
-    df['pci 2']=pci2
+    df['TP1']=pci1
+    df['TP2']=pci2
     return df
 
 def df_to_ue_lists(df,cluster,thr,env):
 
-    df_filter=df.groupby('PCI Serving')
+    df_filter=df.groupby('TP1')
     ue_dict={}
     for i in cluster:
         counter=0
         ue_list=np.array([])
         df2=df_filter.get_group(i)
         for j in df2.index:
-            ue_list=np.append(ue_list, ue(df.loc[j]['SINR [dB]'],df.loc[j]['SINR-CoMP [dB]'],df.loc[j]['PCI Serving'],df.loc[j]['PCI Coord'],df.loc[j]['lat'],df.loc[j]['lon'],env,df.loc[j]['qos'],thr,j,cluster))
+            ue_list=np.append(ue_list, ue(df.loc[j]['SINR [dB]'],df.loc[j]['SINR-CoMP [dB]'],df.loc[j]['SINR-CoMP with phaseshift [dB]'],df.loc[j]['TP1'],df.loc[j]['TP2'],df.loc[j]['lat'],df.loc[j]['lon'],env,df.loc[j]['qos'],thr,j,cluster))
         ue_dict[i]= ue_list
     return ue_dict
 
@@ -150,23 +154,30 @@ def get_dataframe(users):
     df['queue']=queue
     return df
 
-def calculate_tbs(sinr,sinr2):
+def calculate_tbs(sinr,sinr2,sinr3):
     sinr=round(sinr*2)/2
     sinr2=round(sinr2*2)/2
-    if(sinr>30 or sinr2>30):
+    sinr3=round(sinr3*2)/2
+    if(sinr>30):
         print('sinr out of range')
         sinr=30
+    if(sinr2>30):
         sinr2=30
-        mapping=pd.read_csv('Data/sinr-tbs-mapping.csv',index_col='Unnamed: 0')
-    elif(sinr<-10):
+    if(sinr3>30):
+        sinr3=30
+    if(sinr<-10 ):
         print('sinr out of range')
         sinr=-10
+    if(sinr2<-10):
         sinr2=-10
-        mapping=pd.read_csv('Data/sinr-tbs-mapping.csv',index_col='Unnamed: 0')
+    if(sinr3<-10):    
+        sinr3=-10
+        #mapping=pd.read_csv('Data/sinr-tbs-mapping.csv',index_col='Unnamed: 0')
     mapping=pd.read_csv('Data/sinr-tbs-mapping.csv',index_col='Unnamed: 0')
     tbs=mapping.loc[sinr]['tbs']
     tbs2=mapping.loc[sinr2]['tbs']
-    return tbs,tbs2
+    tbs3=mapping.loc[sinr3]['tbs']
+    return tbs,tbs2,tbs3
 
 class sched_inst:
     
@@ -234,7 +245,7 @@ class sched_inst:
         return sched_user_list
 
 
-    def central_scheduler(self, env, users, SCHEDULE_T, cluster, prb_number,sched_metric):
+    def central_scheduler(self, env, users, SCHEDULE_T, cluster, prb_number,sched_metric,mode):
 
         alpha=-np.log10(0.01)/100
         while True: 
@@ -269,7 +280,10 @@ class sched_inst:
                 cell2=int(users[sched_user].cell2)
                 queue_size=users[sched_user].queue2.level
                 tbs=users[sched_user].tbs
-                tbs2=users[sched_user].tbs2
+                if(mode=='phaseshift'):
+                    tbs_comp=users[sched_user].tbs_phase
+                else:
+                    tbs_comp=users[sched_user].tbs_comp
                 remaining_prbs=remaining_prb_list[cell1]
                 remaining_prbs_c2=remaining_prb_list[cell2]
                 
@@ -288,18 +302,18 @@ class sched_inst:
                         sched_size=queue_size
                         remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs)
 
-                elif((queue_size/tbs2)<=remaining_prbs and (queue_size/tbs2)<=remaining_prbs_c2 and queue_size>0):
+                elif((queue_size/tbs_comp)<=remaining_prbs and (queue_size/tbs_comp)<=remaining_prbs_c2 and queue_size>0):
                 #comp can be used
                     #print('mit CoMP')
                     sched_size=queue_size
-                    remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs2)
-                    remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(queue_size/tbs2)
+                    remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs_comp)
+                    remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(queue_size/tbs_comp)
                 #one of the cells has not enough resources left 
-                elif((queue_size/tbs2)>remaining_prbs or (queue_size/tbs2)>remaining_prbs_c2):
+                elif((queue_size/tbs_comp)>remaining_prbs or (queue_size/tbs_comp)>remaining_prbs_c2):
                     #print('mit CoMP - v2')
-                    sched_size=min(remaining_prbs,remaining_prbs_c2)*tbs2
+                    sched_size=min(remaining_prbs,remaining_prbs_c2)*tbs_comp
                     remaining_prb_list[cell1]=remaining_prbs-min(remaining_prbs,remaining_prbs_c2)
-                    remaining_prb_list[cell2]=remaining_prbs_c2-(sched_size/tbs2)
+                    remaining_prb_list[cell2]=remaining_prbs_c2-(sched_size/tbs_comp)
                 elif(queue_size==0):
                     self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
                     ue_re=np.array([])
@@ -444,10 +458,11 @@ class sched_inst:
         
 
 class ue:
-    def __init__(self,sinr,sinr2,cell1,cell2,x,y,env,qos,thr,id,cluster):
+    def __init__(self,sinr,sinr2,sinr3,cell1,cell2,x,y,env,qos,thr,id,cluster):
         self.sinr=sinr
         self.sinr2=sinr2
-        self.tbs,self.tbs2=calculate_tbs(sinr,sinr2)
+        self.tbs,self.tbs_comp,self.tbs_phase=calculate_tbs(sinr,sinr2,sinr3)
+        
         self.qos=qos
         self.cp=0.5*0.7*20000000*np.log2(1+np.power(10,sinr/10))/8000
         self.cp2=0.5*0.7*20000000*np.log2(1+np.power(10,sinr2/10))/8000 #division by 8000 to determine number of bits that can be transmitted per TTI (1ms)
@@ -462,7 +477,6 @@ class ue:
         self.metric=self.sinr+self.queue.level
         self.metric2=self.sinr+self.queue.level
         self.gain=self.sinr2-self.sinr
-        #self.gain=self.tbs2/self.tbs
         self.id=id
         self.bits=0
         self.bits2=0
@@ -470,6 +484,10 @@ class ue:
         self.mr2_mon={}
         self.x=x
         self.y=y
+        
+        tp_dict={}
+        c=0
+            
         if(self.gain >thr and (self.cell2 in cluster)):
             self.comp=np.array(1)
         else:

@@ -35,7 +35,7 @@ Simulation procedure:
 
 - define all paramters
 - define environment
-- define schedulers (N scheduler dor N sectors and 1 central scheduler per cluster)
+- define schedulers (N scheduler for N sectors and 1 central scheduler per cluster)
 - define index of which users to take (randomly or deterministic)
 - restrict_users_to_cluster (users can only take sectors from the cluster for comp ) 
 - get_user_from_cluster (select the users for the scheduling by the defined index)
