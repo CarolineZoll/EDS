@@ -249,7 +249,6 @@ class sched_inst:
 
         alpha=-np.log10(0.01)/100
         while True: 
-            #print('new sched round')
             counter=env.now+1 #counts the number of scheduling procedures
             yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
             metric=np.array([]) 
@@ -260,16 +259,11 @@ class sched_inst:
 
             sched_user_list=self.metric_list_C(users,sched_metric,env.now,'comp')
             
-            #remaining_prb_list={}
-            #pci_number=0
-            #for i in cluster:
-            #    remaining_prb_list[i]=prb_number[pci_number]
-            #    pci_number+=1
             remaining_prb_list=prb_number.copy()
             
             k=0
             free_res=1
-
+            
             while(free_res==1):
                 #print('sched ')
                 if(k==len(sched_user_list)):
