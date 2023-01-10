@@ -319,8 +319,10 @@ class sched_inst:
                 else:
                     print('something went wrong')
                 users[sched_user].mR2=users[sched_user].mR2+(1/counter)*sched_size
-
-                users[sched_user].queue2.get(sched_size)
+                if(users[sched_user].queue2.level!=0):
+                    users[sched_user].queue2.get(sched_size)
+                else:
+                    print('queue size was 0')
                 k=k+1
                 free_res=0
                 for i in cluster:

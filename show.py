@@ -4,6 +4,8 @@ import math
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
 
+font = {'fontname':'Computer Modern'}
+
 ##################################################################################################
 #Darstellungen
 ##################################################################################################
@@ -21,7 +23,7 @@ def cdf_1(data,legende1,color1,titel,xbereich1,xbereich2,xachse,bins):
     plt.rcParams.update(parameters)
     
     plt.plot(bins_count[1:], cdf, color=color1, label=legende1)
-    plt.title(titel)
+    plt.title(titel,**font)
     plt.legend(fontsize=16)
     plt.grid()
     plt.ylim([0,1])
@@ -98,14 +100,14 @@ def cdf_3(data,legende1,color1,data2,legende2,color2,data3,legende3,color3,titel
     plt.plot(bins_count3[1:], cdf3, color=color3, label=legende3)
     
     
-    plt.title(titel)
+    plt.title(titel,**font)
     
-    plt.legend(fontsize=16)
+    plt.legend(fontsize=16,**font)
     plt.grid()
     plt.ylim([0,1])
     plt.xlim([xbereich1,xbereich2])
-    plt.xlabel(xachse)
-    plt.ylabel('CDF')
+    plt.xlabel(xachse,**font)
+    plt.ylabel('CDF',**font)
     
     print(legende1)
     print('10% Quantil:', np.percentile(data, 10)) 
