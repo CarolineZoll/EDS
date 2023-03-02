@@ -161,16 +161,24 @@ def calculate_prb_number(users,max_prb):
 
 def calculate_prb_number_comp(ue_all,cluster,max_prb,ue_nr):
     prb_number_comp={}
-    for i in cluster:
+    if(len(cluster)==2):
         c=0
-        c2=0
         for j in ue_all:
             if(j.comp==1):
-                if(j.cell1 ==i):
-                    c+=1
-                if(j.cell2==i):
-                    c2+=1
-        prb_number_comp[i]=round(max_prb*(c+c2)/(ue_nr+c2))
+                c+=1
+        for i in cluster:
+            prb_number_comp[i]=round(max_prb*(c*2)/(ue_nr*2+c))
+    else:        
+        for i in cluster:
+            c=0
+            c2=0
+            for j in ue_all:
+                if(j.comp==1):
+                    if(j.cell1 ==i):
+                        c+=1
+                    if(j.cell2==i):
+                        c2+=1
+            prb_number_comp[i]=round(max_prb*(c+c2)/(ue_nr+c2))
     
     return prb_number_comp
 
