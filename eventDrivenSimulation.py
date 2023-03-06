@@ -179,8 +179,51 @@ def calculate_prb_number_comp(ue_all,cluster,max_prb,ue_nr):
                     if(j.cell2==i):
                         c2+=1
             prb_number_comp[i]=round(max_prb*(c+c2)/(ue_nr+c2))
-    
     return prb_number_comp
+
+
+def calculate_prb_number_mode2(ue_all,cluster,max_prb,ue_nr):
+    if(len(cluster)==2):
+        prb={}
+        a1=0
+        a2=0
+        sinr_max=0
+        for i in ue_all:
+            if(i.sinr2>sinr_max):
+                sinr_max=i.sinr2
+        c_max=(np.log2(1+np.exp(sinr_max/10)))
+
+        for i in ue_all:
+            if(i.comp==1):
+                sinr=np.exp(i.sinr2/10)
+                a2+=c_max*2/(np.log2(1+sinr))
+            else:
+                sinr=np.exp(i.sinr/10)
+                a1+=c_max/(np.log2(1+sinr))
+            for i in cluster:
+                prb[i]=np.round(a2/(a2+a1)*max_prb)
+    else:
+        prb={}
+        a1=0
+        a2=0
+        sinr_max=0
+        count=0
+        for j in cluster:
+            for i in ue_all[count*ue_nr:ue_nr*(count+1)]:
+                if(i.sinr2>sinr_max):
+                    sinr_max=i.sinr2
+                c_max=(np.log2(1+np.exp(sinr_max/10)))
+
+            for i in ue_all[count*ue_nr:ue_nr*(count+1)]:
+                if(i.comp==1):
+                    sinr=np.exp(i.sinr2/10)
+                    a2+=c_max*2/(np.log2(1+sinr))
+                else:
+                    sinr=np.exp(i.sinr/10)
+                    a1+=c_max/(np.log2(1+sinr))
+            prb[j]=np.round(a2/(a2+a1)*max_prb)
+            count+=1
+    return prb
 
 def get_dataframe(users):
     df=pd.DataFrame()

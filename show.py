@@ -100,14 +100,14 @@ def cdf_3(data,legende1,color1,data2,legende2,color2,data3,legende3,color3,titel
     plt.plot(bins_count3[1:], cdf3, color=color3, label=legende3)
     
     
-    plt.title(titel,**font)
+    plt.title(titel)
     
-    plt.legend(fontsize=16,**font)
+    plt.legend(fontsize=16)
     plt.grid()
     plt.ylim([0,1])
     plt.xlim([xbereich1,xbereich2])
-    plt.xlabel(xachse,**font)
-    plt.ylabel('CDF',**font)
+    plt.xlabel(xachse)
+    plt.ylabel('CDF')
     
     print(legende1)
     print('10% Quantil:', np.percentile(data, 10)) 
