@@ -1,4 +1,4 @@
-import eventDrivenSimulation as eds
+import eventDrivenSimulation_arrivalRate as eds
 import simpy
 import numpy as np
 import pandas as pd
