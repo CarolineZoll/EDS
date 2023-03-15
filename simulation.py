@@ -1,4 +1,4 @@
-import eventDrivenSimulation_arrivalRate as eds
+import eventDrivenSimulation as eds
 import simpy
 import numpy as np
 import pandas as pd
@@ -20,7 +20,11 @@ def run_simulation(mode,df,cluster,mu, ue_nr, thr, max_prb,prb_number_comp,metri
 
     ue_per_tp,ue_all=eds.get_user_from_cluster(ue_dict,cluster,ue_nr,index)
     if(prb_number_comp=='calculate'):
-        prb_number_comp=eds.calculate_prb_number_comp(ue_all,cluster,max_prb,ue_nr)
+        if(strategy=='B'):
+            prb_number_comp=eds.calculate_prb_number_mode2(ue_all,cluster,max_prb,ue_nr)
+        elif(strategy=='A'):
+            prb_number_comp=eds.calculate_prb_number_comp(ue_all,cluster,max_prb,ue_nr)
+    print(prb_number_comp)
 
     sched_l=[]
     sched_central=eds.sched_inst(env) #central scheduler
@@ -120,7 +124,8 @@ def plot_map(CONFIG,cell_data,df_r,df_r2):
                                       '&lon=' + str(CONFIG['LON']) + \
                                       '&radius=' + str(CONFIG['RADIUS']) + \
                                       '&num_ues=' + str(CONFIG['NUM_UES']) + \
-                                    '&cell_type=NGMN3600'
+                                    '&cell_type=NGMN3600'+\
+                                '&source=LY_221108'
 
     ul_response_data = requests.get(ul_query_string).json()
     ue_data = ul_response_data['ue_data']

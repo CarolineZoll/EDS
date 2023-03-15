@@ -710,7 +710,8 @@ def plot_map(CONFIG,cell_data):
                                       '&lon=' + str(CONFIG['LON']) + \
                                       '&radius=' + str(CONFIG['RADIUS']) + \
                                       '&num_ues=' + str(CONFIG['NUM_UES']) + \
-                                    '&cell_type=NGMN3600'
+                                    '&cell_type=NGMN3600'+\
+                                '&source=LY_221108'
 
     ul_response_data = requests.get(ul_query_string).json()
     ue_data = ul_response_data['ue_data']
