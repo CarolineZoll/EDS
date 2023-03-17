@@ -13,7 +13,7 @@ import bibliothek as bib
 import random
 
 
-def run_simulation(mode,df,cluster,mu, ue_nr, thr, max_prb,prb_number_comp,metric):
+def run_simulation(mode,df,cluster,mu, ue_nr, thr, max_prb,prb_number_comp,metric,strategy):
     env=simpy.Environment()
     ue_dict=eds.df_to_ue_lists(df,cluster,thr,env)
     index=eds.select_user_index(mode, ue_nr, ue_dict, cluster)
