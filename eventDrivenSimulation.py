@@ -36,6 +36,8 @@ def ue_to_df(users):
     qos=[]
     mr_list=[]
     mr2_list=[]
+    uti=[]
+
     #metric_sav=[]
     #metric2_sav=[]
     bit=[]
@@ -64,6 +66,7 @@ def ue_to_df(users):
         mr_rel.append(i.mR2/i.mR)
         pci1.append(i.cell1)
         pci2.append(i.cell2)
+        uti.append(i.utilization)
 
     
 
@@ -83,6 +86,7 @@ def ue_to_df(users):
     df['qos']=qos
     df['TP1']=pci1
     df['TP2']=pci2
+    df['utilization']=uti
     return df
 
 def select_user_index(mode, ue_nr, ue_dict, cluster):
@@ -436,7 +440,7 @@ class sched_inst:
             counter=env.now+1 
             yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
             metric=np.array([]) 
-
+            #print(env.now)
             for i in users:
                 i.mon= monitor(i.queue.level,i.mon,env)
                 i.mr_mon=monitor(i.mR,i.mr_mon,env)
@@ -485,6 +489,13 @@ class sched_inst:
                     ue_re=np.append(ue_re,i.queue.level/i.tbs)
                 self.rem_req=monitor(sum(ue_re),self.rem_req,env)
                 k=k+1
+                
+                
+            for u in users:
+                if(u.queue.level>0):
+                    #print(env.now)
+                    u.utilization=u.utilization+1
+                        
 
 
             #CoMP-Scheduling Process- Users with normal scheduling
@@ -568,6 +579,7 @@ class ue:
         self.mr2_mon={}
         self.x=x
         self.y=y
+        self.utilization=0
         
         tp_dict={}
         c=0

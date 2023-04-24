@@ -13,7 +13,7 @@ import bibliothek as bib
 import random
 
 
-def run_simulation(mode,df,cluster,mu, ue_nr, thr, max_prb,prb_number_comp,metric,strategy):
+def run_simulation(mode,df,cluster,mu, ue_nr, thr, max_prb,prb_number_comp,metric,strategy,sim_time):
     env=simpy.Environment()
     ue_dict=eds.df_to_ue_lists(df,cluster,thr,env)
     index=eds.select_user_index(mode, ue_nr, ue_dict, cluster)
@@ -47,8 +47,8 @@ def run_simulation(mode,df,cluster,mu, ue_nr, thr, max_prb,prb_number_comp,metri
         prb_number_normal=max_prb-prb_number_comp[i]
         env.process(sched_l[counter].scheduler(env,ue_sep,SCHEDULE_T,cluster,max_prb,ue_list,prb_number_normal,metric))
         counter=counter+1
-    timer=2000
-    env.run(until=timer)
+    #timer=2000
+    env.run(until=sim_time)
     return ue_noCoMP, ue_comp, ue_all,index
 
 
