@@ -10,7 +10,7 @@ import haversine
 import requests
 import math
 
-SCHEDULE_T=2 #Clock des Schedulers 
+#SCHEDULE_T=2 #Clock des Schedulers 
 alpha=-np.log10(0.01)/100
 
 def lognormal(mean):
@@ -274,10 +274,11 @@ def calculate_tbs(sinr,sinr2,sinr3):
 class sched_inst:
     
     def __init__(self,env):
-        self.rem_prb={}
-        self.rem_req={}
-        self.rem_prb_c={}
-        self.rem_req_c={}
+        #self.rem_prb={}
+        #self.rem_req={}
+        #self.rem_prb_c={}
+        #self.rem_req_c={}
+        self.sched_ut=0
         
         
     def metric_list_nC(self, users,sched_exp,counter):
@@ -340,8 +341,8 @@ class sched_inst:
     def central_scheduler(self, env, users, SCHEDULE_T, cluster, prb_number,sched_metric,mode):
 
         alpha=-np.log10(0.01)/100
-        while True: 
-            counter=env.now+1 #counts the number of scheduling procedures
+        while True:  
+            counter=env.now/10+1 #counts the number of scheduling procedures
             yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
             metric=np.array([]) 
 
@@ -349,7 +350,7 @@ class sched_inst:
                 users[i].mon2= monitor(users[i].queue.level,users[i].mon2,env)
                 users[i].mr2_mon=monitor(users[i].mR2,users[i].mr2_mon,env)
 
-            sched_user_list=self.metric_list_C(users,sched_metric,env.now,'comp')
+            sched_user_list=self.metric_list_C(users,sched_metric,counter,'comp')
             
             remaining_prb_list=prb_number.copy()
             
@@ -401,11 +402,11 @@ class sched_inst:
                     remaining_prb_list[cell1]=remaining_prbs-min(remaining_prbs,remaining_prbs_c2)
                     remaining_prb_list[cell2]=remaining_prbs_c2-(sched_size/tbs_comp)
                 elif(queue_size==0):
-                    self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
-                    ue_re=np.array([])
-                    for i in users:
-                        ue_re=np.append(ue_re,i.queue2.level/i.tbs)
-                    self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+                    #self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
+                    #ue_re=np.array([])
+                    #for i in users:
+                        #ue_re=np.append(ue_re,i.queue2.level/i.tbs)
+                    #self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
                     k=k+1
                     break
                 else:
@@ -421,12 +422,12 @@ class sched_inst:
                     if(remaining_prb_list[i]!=0):
                         free_res=1
                 
-                self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
+                #self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
                 ue_re=np.array([])
                 for i in users:
                     ue_re=np.append(ue_re,i.queue2.level/i.tbs)
                     
-                self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+                #self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
                     
                 
 
@@ -437,7 +438,7 @@ class sched_inst:
 
 
         while True: #größte Warteschlange wird auch bedient
-            counter=env.now+1 
+            counter=env.now/10+1 
             yield env.timeout(SCHEDULE_T) #for each ms the scheduling is active -> per TTI
             metric=np.array([]) 
             #print(env.now)
@@ -468,11 +469,11 @@ class sched_inst:
                     remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
                 elif(queue_size==0):
                     
-                    self.rem_prb=monitor(remaining_prbs,self.rem_prb,env)
-                    ue_re=np.array([])
-                    for i in users:
-                        ue_re=np.append(ue_re,i.queue.level)
-                    self.rem_req=monitor(sum(ue_re),self.rem_req,env)
+                    #self.rem_prb=monitor(remaining_prbs,self.rem_prb,env)
+                    #ue_re=np.array([])
+                    #for i in users:
+                     #   ue_re=np.append(ue_re,i.queue.level)
+                    #self.rem_req=monitor(sum(ue_re),self.rem_req,env)
                     #print('empty queue - no comp')
                     sched_size=0
                     break
@@ -483,11 +484,11 @@ class sched_inst:
                 users[sched_user].queue.get(sched_size)
                 users[sched_user].bits+=sched_size
                 
-                self.rem_prb=monitor(remaining_prbs,self.rem_prb,env)
+                #self.rem_prb=monitor(remaining_prbs,self.rem_prb,env)
                 ue_re=np.array([])
                 for i in users:
                     ue_re=np.append(ue_re,i.queue.level/i.tbs)
-                self.rem_req=monitor(sum(ue_re),self.rem_req,env)
+                #self.rem_req=monitor(sum(ue_re),self.rem_req,env)
                 k=k+1
                 
                 
@@ -522,12 +523,12 @@ class sched_inst:
                     remaining_prbs=remaining_prbs-np.ceil(sched_size/tbs)
 
                 elif(queue_size==0):
-                    self.rem_prb_c=monitor(remaining_prbs,self.rem_prb_c,env)
-                    ue_re=np.array([])
-                    for i in users:
-                        ue_re=np.append(ue_re,i.queue2.level/i.tbs)
+                    #self.rem_prb_c=monitor(remaining_prbs,self.rem_prb_c,env)
+                    #ue_re=np.array([])
+                    #for i in users:
+                        #ue_re=np.append(ue_re,i.queue2.level/i.tbs)
                     
-                    self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+                    #self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
                     #print('empty queue - comp-scheduling: no comp user')
                     break
                 else:
@@ -541,12 +542,12 @@ class sched_inst:
                 users2[sched_user].queue2.get(sched_size)
                 users2[sched_user].bits2+=sched_size
                 
-                self.rem_prb_c=monitor(remaining_prbs,self.rem_prb_c,env)
+                #self.rem_prb_c=monitor(remaining_prbs,self.rem_prb_c,env)
                 ue_re=np.array([])
                 for i in users2:
                     ue_re=np.append(ue_re,i.queue2.level/i.tbs)
                     
-                self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+                #self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
 
                 k=k+1
             ###########################

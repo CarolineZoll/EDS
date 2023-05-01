@@ -31,7 +31,7 @@ def run_simulation(mode,df,cluster,mu, ue_nr, thr, max_prb,prb_number_comp,metri
     for i in cluster:
         sched_l.append(eds.sched_inst(env))
 
-    SCHEDULE_T=2
+    SCHEDULE_T=20
 
     ue_noCoMP,ue_comp=eds.seperate_comp_noCoMP(cluster,ue_per_tp)
 
