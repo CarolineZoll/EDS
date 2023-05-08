@@ -38,8 +38,6 @@ def ue_to_df(users):
     mr2_list=[]
     uti=[]
 
-    #metric_sav=[]
-    #metric2_sav=[]
     bit=[]
     bit2=[]
     mr_rel=[]
@@ -154,16 +152,8 @@ def monitor(value,monitor,env):
     monitor.update({env.now: value})
     return monitor
  
-    
-def calculate_prb_number(users,max_prb):
-    count=0
-    for i in users:
-        if(i.comp==1):
-            count+=1
-    prb_number=round((count*2)/(count+len(users))*max_prb)
-    return prb_number
 
-def calculate_prb_number_comp(ue_all,cluster,max_prb,ue_nr):
+def calculate_prb_number_strA(ue_all,cluster,max_prb,ue_nr):
     prb_number_comp={}
     if(len(cluster)==2):
         c=0
@@ -186,7 +176,7 @@ def calculate_prb_number_comp(ue_all,cluster,max_prb,ue_nr):
     return prb_number_comp
 
 
-def calculate_prb_number_mode2(ue_all,cluster,max_prb,ue_nr):
+def calculate_prb_number_strB(ue_all,cluster,max_prb,ue_nr):
     if(len(cluster)==2):
         prb={}
         a1=0
@@ -229,22 +219,6 @@ def calculate_prb_number_mode2(ue_all,cluster,max_prb,ue_nr):
             count+=1
     return prb
 
-def get_dataframe(users):
-    df=pd.DataFrame()
-    sinr=np.array([])
-    sinr2=np.array([])
-    tbs=np.array([])
-    queue=np.array([])
-    for i in np.arange(np.size(users)):
-        sinr=np.append(sinr,users[i].sinr)
-        sinr2=np.append(sinr,users[i].sinr2)
-        tbs=np.append(sinr,users[i].tbs)
-        queue=np.append(sinr,users[i].queue)
-    df['sinr']=sinr
-    df['sinr2']=sinr2
-    df['tbs']=tbs
-    df['queue']=queue
-    return df
 
 def calculate_tbs(sinr,sinr2,sinr3):
     sinr=round(sinr*2)/2
@@ -273,13 +247,11 @@ def calculate_tbs(sinr,sinr2,sinr3):
 
 class sched_inst:
     
-    def __init__(self,env):
-        #self.rem_prb={}
-        #self.rem_req={}
-        #self.rem_prb_c={}
-        #self.rem_req_c={}
+    def __init__(self,env,cluster):
         self.sched_ut=0
-        
+        self.add_resources={}
+        for i in cluster:
+            self.add_resources.update({i:simpy.Container(env)})
         
     def metric_list_nC(self, users,sched_exp,counter):
         e1=sched_exp[0]
@@ -287,21 +259,14 @@ class sched_inst:
         metric=np.array([])
 
         for i in users: 
-            if(i.qos==1 or i.qos==2):
-                metric=np.append(metric, (alpha*i.queue.level*((i.cp)**e1/(i.mR)**e2)))  #list the metric of all UEs in the process 
-                i.mR=(1-1/counter)*i.mR 
-                i.mR=(1-1/(counter+1))*i.mR #Ratenanpassung für alle Nutzer    
-            elif(i.qos==0):
-                if(i.queue.level>0):
-                    metric=np.append(metric,((i.cp)**e1/(i.mR**e2)))
-                    i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
-                    i.mR=(1-1/(counter+1))*i.mR
-                elif(i.queue.level==0):
-                    metric=np.append(metric,-1)
-                    i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
-                    i.mR=(1-1/(counter+1))*i.mR
-                else:
-                    print('mistake')
+            if(i.queue.level>0):
+                metric=np.append(metric,((i.cp)**e1/(i.mR**e2)))
+                i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
+                i.mR=(1-1/(counter+1))*i.mR
+            elif(i.queue.level==0):
+                metric=np.append(metric,-1)
+                i.mR=(1-1/counter)*i.mR #Ratenanpassung für alle Nutzer
+                i.mR=(1-1/(counter+1))*i.mR
             else:
                 print('mistake')
         sched_user_list = (-metric).argsort() #sort UEs by metric that will be used for scheduling
@@ -316,22 +281,15 @@ class sched_inst:
                 cp=i.cp
             elif(usage=='comp'):
                 cp=i.cp2
-
-            if(i.qos==1 or i.qos==2):
-                metric=np.append(metric, (alpha*i.queue2.level*(cp**e1/(i.mR2)**e2)))  #list the metric of all UEs in the process 
-                i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer   
+                
+            if(i.queue2.level>0):
+                metric=np.append(metric,((cp)**e1/(i.mR2)**e2))
+                i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
                 i.mR2=(1-1/(counter+1))*i.mR2
-            elif(i.qos==0):
-                if(i.queue2.level>0):
-                    metric=np.append(metric,((cp)**e1/(i.mR2)**e2))
-                    i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
-                    i.mR2=(1-1/(counter+1))*i.mR2
-                elif(i.queue2.level==0):
-                    metric=np.append(metric,-1)
-                    i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
-                    i.mR2=(1-1/(counter+1))*i.mR2
-                else:
-                    print('mistake')
+            elif(i.queue2.level==0):
+                metric=np.append(metric,-1)
+                i.mR2=(1-1/counter)*i.mR2 #Ratenanpassung für alle Nutzer
+                i.mR2=(1-1/(counter+1))*i.mR2
             else:
                 print('mistake')
         sched_user_list = (-metric).argsort() #sort UEs by metric that will be used for scheduling
@@ -356,11 +314,12 @@ class sched_inst:
             
             k=0
             free_res=1
-            
             while(free_res==1):
-                #print('sched ')
                 if(k==len(sched_user_list)):
-                    #print('remaining res comp-central:',free_res)
+                    print('res free')
+                    for z in remaining_prb_list:
+                        if(remaining_prb_list[z]>0):
+                            self.add_resources[z].put(remaining_prb_list[z])
                     break
                 sched_user=sched_user_list[k]
                 cell1=int(users[sched_user].cell1)
@@ -375,38 +334,34 @@ class sched_inst:
                 remaining_prbs_c2=remaining_prb_list[cell2]
                 
                 sched_size=0
-                if(remaining_prbs==0):
-                    #print('keine Res mehr frei')
+                if(remaining_prbs<=0):
+                    print('nothing over')
                     k+=1
                     continue
                 #cell to coordinate with has no resources left -> without comp
-                elif(remaining_prbs_c2==0):
-                    #print('ohne CoMP')
+                elif(remaining_prbs_c2<=0):
                     if((queue_size/tbs)>remaining_prbs):
                         sched_size=remaining_prbs*tbs
                         remaining_prb_list[cell1]=0
                     else:
                         sched_size=queue_size
                         remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs)
-
                 elif((queue_size/tbs_comp)<=remaining_prbs and (queue_size/tbs_comp)<=remaining_prbs_c2 and queue_size>0):
                 #comp can be used
-                    #print('mit CoMP')
                     sched_size=queue_size
                     remaining_prb_list[cell1]=remaining_prbs-np.ceil(queue_size/tbs_comp)
                     remaining_prb_list[cell2]=remaining_prbs_c2-np.ceil(queue_size/tbs_comp)
                 #one of the cells has not enough resources left 
                 elif((queue_size/tbs_comp)>remaining_prbs or (queue_size/tbs_comp)>remaining_prbs_c2):
-                    #print('mit CoMP - v2')
+                   
                     sched_size=min(remaining_prbs,remaining_prbs_c2)*tbs_comp
                     remaining_prb_list[cell1]=remaining_prbs-min(remaining_prbs,remaining_prbs_c2)
                     remaining_prb_list[cell2]=remaining_prbs_c2-(sched_size/tbs_comp)
-                elif(queue_size==0):
-                    #self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
-                    #ue_re=np.array([])
-                    #for i in users:
-                        #ue_re=np.append(ue_re,i.queue2.level/i.tbs)
-                    #self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
+                elif(queue_size<=0):
+                    print('queues are empty -> resources adding')
+                    for z in remaining_prb_list:
+                        if(remaining_prb_list[z]>0):
+                            self.add_resources[z].put(remaining_prb_list[z])
                     k=k+1
                     break
                 else:
@@ -422,19 +377,17 @@ class sched_inst:
                     if(remaining_prb_list[i]!=0):
                         free_res=1
                 
-                #self.rem_prb_c=monitor([remaining_prb_list[cell1],remaining_prb_list[cell2]],self.rem_prb_c,env)
                 ue_re=np.array([])
                 for i in users:
                     ue_re=np.append(ue_re,i.queue2.level/i.tbs)
                     
-                #self.rem_req_c=monitor(sum(ue_re),self.rem_req_c,env)
                     
                 
 
 
 
     #scheduler takes packets from the queues according to the capacity of each user
-    def scheduler(self, env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, sched_metric):
+    def scheduler(self, env, users, SCHEDULE_T,cluster, prb_number, users2, prb_number2, sched_metric, cs):
 
 
         while True: #größte Warteschlange wird auch bedient
@@ -450,8 +403,9 @@ class sched_inst:
 
 
             sched_user_list=self.metric_list_nC(users,sched_metric,counter)
-
+            
             remaining_prbs=prb_number
+            
             k=0
             while(remaining_prbs>0):
                 if(k==len(sched_user_list)):
@@ -503,8 +457,19 @@ class sched_inst:
             ############################
 
             sched_user_list = self.metric_list_C(users2,sched_metric,counter,'nocomp') #calculates the ordered list with ues
+            
+            
+            index_get=0
+            cell_number=int(users2[0].cell1)
+            for i in cluster:
+                if(i== cell_number):
+                    index_get=i
+            remaining_prbs=prb_number2+cs.add_resources[index_get].level
+                
+            if(cs.add_resources[index_get].level>0):
+                cs.add_resources[index_get].get(cs.add_resources[index_get].level)
+            #print(cs.add_resources[index_get].level)
 
-            remaining_prbs=prb_number2
             k=0
             #print('New scheduling round')
             while(remaining_prbs>0):
@@ -590,179 +555,12 @@ class ue:
         else:
             self.comp=np.array(0) 
         
-    def rt_user(self,env,size):
-        on_off=1
-        counter=0
-        start=0
-        max_counter=np.random.exponential(3000)
-        while True:
-            if(start==0):
-                start=1
-                yield env.timeout(random.randint(0,200)) 
-            elif(on_off==1 and counter<max_counter):
-                self.queue.put(size) #20 bytes
-                self.queue2.put(size) #20 bytes
-                mon= monitor(self.queue.level,self.mon,env)
-                counter=counter+20
-                yield env.timeout(20) #every 20ms new packet
-            elif(on_off==0):
-                on_off=1
-                off_time=(truncexpon.rvs(4.9)+2)*1000 #to be checked -> mean=3 and upper limit of 6.9
-                yield env.timeout(off_time) #3s no packet to be sent
-            elif(on_off==1 and counter>=max_counter):
-                on_off=0
-                counter=0
-                max_counter=np.random.exponential(3)*1000
-                #print('change from ON-OFF')
-   
-    def ftp_user(self,env):
-        while True:
-            #print('o-user')
-            size=lognormal(16000000)
-            self.queue.put(size) #2MByte -> 16000000 Bit & 180s reading time
-            self.queue2.put(size) 
-            yield env.timeout(np.random.exponential(180*1000))
-
-    def best_effort(self,env,size):
-        while True:
-            self.queue.put(size) 
-            self.queue2.put(size)
-            yield env.timeout(10)
-
     def best_effort_stat(self,env,time):
         while True:
             self.queue.put(4000) 
             self.queue2.put(4000)
             yield env.timeout(round(np.random.exponential(time)))
+
             
-    def streaming_user(self,env):
-        while True:
-            #print('o-user')
-            self.queue.put(3000) #1080p-> 1.5 Mbps 
-            self.queue2.put(3000) #1080p-> 1.5 Mbps 
-            yield env.timeout(2)
-    
-    #Noch sehr vereinfacht!!!
-    def sinr_variator(self,env):
-        change=round(np.random.normal(0,0.5))
-        if((self.sinr+change)>-10 and (self.sinr+change)<30): 
-            self.sinr=self.sinr +change
-            self.sinr2=self.sinr2+change 
-        yield env.timeout(2000)
-        
-        
 
-
-def create_sector_shape(lon, lat, dir=0, width=120):
-    p = [(lat, lon)]
-    n_points = 10
-    
-    for a in range(n_points):
-        p.append(haversine.inverse_haversine(p[0], 0.05, (dir - width/2 + width/n_points*a)/180.0 * math.pi))
-    
-    p.append(p[0])
-    return p
-
-def plot_map_cluster(CONFIG,cell_data,df_r,df_r2):
-    ul_scenario_map = folium.Map(location = [CONFIG['LAT'], CONFIG['LON']], tiles = "cartodbpositron", zoom_start = 15)
-    folium.Circle(radius = CONFIG['RADIUS'], 
-                  location = (CONFIG['LAT'], CONFIG['LON']), 
-                  color = 'blue', 
-                  fill_color = 'blue',
-                  fill_opacity = 0.1,
-                  fill = True,
-                  weight = 0,
-                 ).add_to(ul_scenario_map)            
-
-    for cell in cell_data:
-        if(cell['pci'] in [319,775,320,133]):
-            cell_color = '#1c86ee'
-        else:
-            cell_color = '#888888'
-
-
-        folium.PolyLine(
-            create_sector_shape(cell['lon'], cell['lat'], cell['az'], 60), 
-            color = cell_color,
-            fill_color = cell_color,
-           fill_opacity = 0.5, 
-            fill = True,
-            weight = 2,
-            #popup = 'RBs: ' + str(cell['ul_rb_requirement']['mean']),
-            tooltip = 'PCI: ' + str(cell['pci'])).add_to(ul_scenario_map)
-
-        folium.Circle(radius = 10, 
-                      location = (cell['lat'], cell['lon']), 
-                      color = 'black', 
-                      fill_color = 'black',
-                      fill_opacity = 1,
-                      fill = True,
-                      weight = 0,
-                      popup = cell['site_name']
-                     ).add_to(ul_scenario_map)
-
-
-        def plotDotGreen(point):
-            folium.CircleMarker(location=[point.latitude, point.longitude],radius=1,weight=5,color='green').add_to(ul_scenario_map)
-        def plotDotRed(point):
-            folium.CircleMarker(location=[point.latitude, point.longitude],radius=1,weight=5,color='red').add_to(ul_scenario_map)
-
-        df_r.apply(plotDotGreen, axis = 1)
-        df_r2.apply(plotDotRed, axis = 1)
-
-    display(ul_scenario_map)
-    
-    
-
-def plot_map(CONFIG,cell_data):
-
-    ul_scenario_map = folium.Map(location = [CONFIG['LAT'], CONFIG['LON']], tiles = "cartodbpositron", zoom_start = 15)
-
-    ul_query_string = CONFIG['URL'] + '/generate_scenario' + \
-                                      '?lat=' + str(CONFIG['LAT']) + \
-                                      '&lon=' + str(CONFIG['LON']) + \
-                                      '&radius=' + str(CONFIG['RADIUS']) + \
-                                      '&num_ues=' + str(CONFIG['NUM_UES']) + \
-                                    '&cell_type=NGMN3600'+\
-                                '&source=LY_221108'
-
-    ul_response_data = requests.get(ul_query_string).json()
-    ue_data = ul_response_data['ue_data']
-    cell_data=ul_response_data['cell_data']
-
-    folium.Circle(radius = CONFIG['RADIUS'], 
-                  location = (CONFIG['LAT'], CONFIG['LON']), 
-                  color = 'blue', 
-                  fill_color = 'blue',
-                  fill_opacity = 0.1,
-                  fill = True,
-                  weight = 0,
-                 ).add_to(ul_scenario_map)            
-
-    for cell in cell_data:
-        cell_color = '#1c86ee'
-
-
-        folium.PolyLine(
-            create_sector_shape(cell['lon'], cell['lat'], cell['az'], 60), 
-            color = cell_color,
-            fill_color = cell_color,
-           fill_opacity = 0.5, 
-            fill = True,
-            weight = 2,
-            #popup = 'RBs: ' + str(cell['ul_rb_requirement']['mean']),
-            tooltip = 'PCI: ' + str(cell['pci'])).add_to(ul_scenario_map)
-
-        folium.Circle(radius = 10, 
-                      location = (cell['lat'], cell['lon']), 
-                      color = 'black', 
-                      fill_color = 'black',
-                      fill_opacity = 1,
-                      fill = True,
-                      weight = 0,
-                      popup = cell['site_name']
-                     ).add_to(ul_scenario_map)
-
-
-    display(ul_scenario_map)
-        
+ 

@@ -3,6 +3,10 @@ import numpy as np
 import math
 import matplotlib.pyplot as plt
 from mpl_toolkits import mplot3d
+import haversine
+import folium
+import requests
+import math
 
 font = {'fontname':'Computer Modern'}
 
@@ -239,3 +243,118 @@ def auswertung_cdf(df, label1, label2, thr):
         print(100*len(indexNames)/len(df),'Prozent liegen unter '+ str(i) +' dB')
         
 ##########################################################################################################
+
+
+def create_sector_shape(lon, lat, dir=0, width=120):
+    p = [(lat, lon)]
+    n_points = 10
+    
+    for a in range(n_points):
+        p.append(haversine.inverse_haversine(p[0], 0.05, (dir - width/2 + width/n_points*a)/180.0 * math.pi))
+    
+    p.append(p[0])
+    return p
+
+def plot_map_cluster(CONFIG,cell_data,df_r,df_r2):
+    ul_scenario_map = folium.Map(location = [CONFIG['LAT'], CONFIG['LON']], tiles = "cartodbpositron", zoom_start = 15)
+    folium.Circle(radius = CONFIG['RADIUS'], 
+                  location = (CONFIG['LAT'], CONFIG['LON']), 
+                  color = 'blue', 
+                  fill_color = 'blue',
+                  fill_opacity = 0.1,
+                  fill = True,
+                  weight = 0,
+                 ).add_to(ul_scenario_map)            
+
+    for cell in cell_data:
+        if(cell['pci'] in [319,775,320,133]):
+            cell_color = '#1c86ee'
+        else:
+            cell_color = '#888888'
+
+
+        folium.PolyLine(
+            create_sector_shape(cell['lon'], cell['lat'], cell['az'], 60), 
+            color = cell_color,
+            fill_color = cell_color,
+           fill_opacity = 0.5, 
+            fill = True,
+            weight = 2,
+            #popup = 'RBs: ' + str(cell['ul_rb_requirement']['mean']),
+            tooltip = 'PCI: ' + str(cell['pci'])).add_to(ul_scenario_map)
+
+        folium.Circle(radius = 10, 
+                      location = (cell['lat'], cell['lon']), 
+                      color = 'black', 
+                      fill_color = 'black',
+                      fill_opacity = 1,
+                      fill = True,
+                      weight = 0,
+                      popup = cell['site_name']
+                     ).add_to(ul_scenario_map)
+
+
+        def plotDotGreen(point):
+            folium.CircleMarker(location=[point.latitude, point.longitude],radius=1,weight=5,color='green').add_to(ul_scenario_map)
+        def plotDotRed(point):
+            folium.CircleMarker(location=[point.latitude, point.longitude],radius=1,weight=5,color='red').add_to(ul_scenario_map)
+
+        df_r.apply(plotDotGreen, axis = 1)
+        df_r2.apply(plotDotRed, axis = 1)
+
+    display(ul_scenario_map)
+    
+    
+
+def plot_map(CONFIG,cell_data):
+
+    ul_scenario_map = folium.Map(location = [CONFIG['LAT'], CONFIG['LON']], tiles = "cartodbpositron", zoom_start = 15)
+
+    ul_query_string = CONFIG['URL'] + '/generate_scenario' + \
+                                      '?lat=' + str(CONFIG['LAT']) + \
+                                      '&lon=' + str(CONFIG['LON']) + \
+                                      '&radius=' + str(CONFIG['RADIUS']) + \
+                                      '&num_ues=' + str(CONFIG['NUM_UES']) + \
+                                    '&cell_type=NGMN3600'+\
+                                '&source=LY_221108'
+
+    ul_response_data = requests.get(ul_query_string).json()
+    ue_data = ul_response_data['ue_data']
+    cell_data=ul_response_data['cell_data']
+
+    folium.Circle(radius = CONFIG['RADIUS'], 
+                  location = (CONFIG['LAT'], CONFIG['LON']), 
+                  color = 'blue', 
+                  fill_color = 'blue',
+                  fill_opacity = 0.1,
+                  fill = True,
+                  weight = 0,
+                 ).add_to(ul_scenario_map)            
+
+    for cell in cell_data:
+        cell_color = '#1c86ee'
+
+
+        folium.PolyLine(
+            create_sector_shape(cell['lon'], cell['lat'], cell['az'], 60), 
+            color = cell_color,
+            fill_color = cell_color,
+           fill_opacity = 0.5, 
+            fill = True,
+            weight = 2,
+            #popup = 'RBs: ' + str(cell['ul_rb_requirement']['mean']),
+            tooltip = 'PCI: ' + str(cell['pci'])).add_to(ul_scenario_map)
+
+        folium.Circle(radius = 10, 
+                      location = (cell['lat'], cell['lon']), 
+                      color = 'black', 
+                      fill_color = 'black',
+                      fill_opacity = 1,
+                      fill = True,
+                      weight = 0,
+                      popup = cell['site_name']
+                     ).add_to(ul_scenario_map)
+
+
+    display(ul_scenario_map)
+        
